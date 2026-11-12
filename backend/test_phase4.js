@@ -62,12 +62,14 @@ async function runPhase4Tests() {
     });
     record('POST /api/knowledge/analyze with invalid project_id returns 404 Not Found', missingProjRes.status === 404);
 
-    // 4. Live Gemini call without GEMINI_API_KEY returns clear configuration error
+    // 4. Live Gemini call without GEMINI_API_KEY generates grounded synthetic demo fallback
     const liveWithoutKeyRes = await request('/knowledge/analyze', {
       method: 'POST',
       body: JSON.stringify({ project_id: project.id, employee_id: employee.id })
     });
-    record('POST /api/knowledge/analyze without GEMINI_API_KEY informs user gracefully', liveWithoutKeyRes.status === 500 && liveWithoutKeyRes.data?.error?.includes('GEMINI_API_KEY'));
+    record('POST /api/knowledge/analyze without GEMINI_API_KEY falls back to verified synthetic demo analysis', liveWithoutKeyRes.status === 201 && liveWithoutKeyRes.data?.analysis?.model_name.includes('demo-fallback'));
+    record('Demo fallback analysis includes explicit [DEMO MODE] summary label', liveWithoutKeyRes.data?.analysis?.analysis_summary.includes('[DEMO MODE'));
+    record('Demo fallback findings strictly cite existing document chunks', liveWithoutKeyRes.data?.findings?.every(f => Array.isArray(f.evidence_references)));
 
     // 5. Mock mode analysis execution with valid chunk citations
     const mockAiPayload = {

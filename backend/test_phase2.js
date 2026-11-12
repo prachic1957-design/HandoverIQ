@@ -79,9 +79,9 @@ async function runTests() {
     assert(empStandardData.hrView === false, 'Response indicates standard (non-HR) view');
     assert(!empStandardData.data.some(e => e.salary !== undefined), 'Confidential salary field is strictly omitted for standard requests');
 
-    // HR query should receive salary
+    // HR query should receive salary via authorized server bearer token
     const empHRRes = await fetch(`${API_BASE}/employees`, {
-      headers: { 'x-user-role': 'hr' }
+      headers: { 'Authorization': 'Bearer roguenova-hr-authorized-passcode' }
     });
     const empHRData = await empHRRes.json();
     assert(empHRRes.status === 200, 'GET /api/employees (HR role) returned 200');
@@ -89,10 +89,17 @@ async function runTests() {
     const sarahHR = empHRData.data.find(e => e.email === 'sarah.jenkins@handoveriq.internal');
     assert(sarahHR && sarahHR.salary === 145000, 'HR query successfully retrieved authorized salary ($145,000)');
 
+    // Spoofed client role header without valid token must NOT grant HR salary access
+    const spoofedRes = await fetch(`${API_BASE}/employees`, {
+      headers: { 'x-user-role': 'hr' }
+    });
+    const spoofedData = await spoofedRes.json();
+    assert(spoofedData.hrView === false, 'Spoofed x-user-role header is rejected from accessing HR view');
+
     // Attempting to create employee with salary WITHOUT HR role must be 403
     const forbiddenCreateRes = await fetch(`${API_BASE}/employees`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-role': 'hr' }, // Even with spoofed header
       body: JSON.stringify({
         full_name: 'Test Attacker',
         email: 'test.attacker@handoveriq.internal',
@@ -103,10 +110,10 @@ async function runTests() {
     });
     assert(forbiddenCreateRes.status === 403, 'POST /api/employees setting salary without HR credentials rejected with 403 Forbidden');
 
-    // Create valid employee with HR role
+    // Create valid employee with authorized server HR token
     const validCreateRes = await fetch(`${API_BASE}/employees`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-role': 'hr' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer roguenova-hr-authorized-passcode' },
       body: JSON.stringify({
         full_name: 'Marcus Vance',
         email: 'marcus.vance@handoveriq.internal',

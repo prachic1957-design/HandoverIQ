@@ -50,7 +50,7 @@ export default function EmployeesView() {
     try {
       const headers = {};
       if (isHRMode) {
-        headers['x-user-role'] = 'hr';
+        headers['Authorization'] = 'Bearer roguenova-hr-authorized-passcode';
       }
 
       const [empRes, deptRes] = await Promise.all([
@@ -126,7 +126,7 @@ export default function EmployeesView() {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (isHRMode) {
-        headers['x-user-role'] = 'hr';
+        headers['Authorization'] = 'Bearer roguenova-hr-authorized-passcode';
       }
 
       const payload = {
@@ -173,7 +173,7 @@ export default function EmployeesView() {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (isHRMode) {
-        headers['x-user-role'] = 'hr';
+        headers['Authorization'] = 'Bearer roguenova-hr-authorized-passcode';
       }
 
       const payload = {

@@ -4,8 +4,12 @@ import crypto from 'crypto';
 import { db } from '../db/repository.js';
 import { storage } from '../services/storage.js';
 import { processDocumentBuffer } from '../services/textExtractor.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Protect all document endpoints with authentication middleware
+router.use(authenticate);
 
 // Configure multer for in-memory upload buffering (max 25MB)
 const upload = multer({

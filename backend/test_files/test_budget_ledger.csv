@@ -1,0 +1,5 @@
+Account_Code,Description,Monthly_Allocation,Variance_Status
+GL-1001,AWS Cloud Infrastructure,$28500,Approved
+GL-1002,Datadog Observability,$4200,Pending Audit
+GL-1003,GitHub Enterprise Licenses,$6500,Approved
+GL-1004,Vault Enterprise Cluster,$3800,In Review

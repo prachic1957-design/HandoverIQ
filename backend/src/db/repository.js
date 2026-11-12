@@ -139,6 +139,78 @@ let mockProjectMembers = [
   }
 ];
 
+// Phase 3 Ingested Documents
+let mockDocuments = [
+  {
+    id: 'doc-1111-1111-1111-111111111111',
+    project_id: 'p1111111-1111-1111-1111-111111111111',
+    employee_id: 'e1111111-1111-1111-1111-111111111111',
+    original_filename: 'kubernetes_migration_plan_v2.txt',
+    storage_path: 'projects/p1111111-1111-1111-1111-111111111111/kubernetes_migration_plan_v2.txt',
+    mime_type: 'text/plain',
+    file_size: 4820,
+    file_hash: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+    extracted_text: `Project: Core Infrastructure Migration\nAuthor: Sarah Jenkins\nObjective: Zero-downtime cutover to AWS EKS.\nKey Milestone 1: VPC CNI and dual NAT Gateway topology provisioned.\nKey Milestone 2: Secret management migrated to HashiCorp Vault.\nRisk: Stateful legacy database replica synchronization latency during peak traffic hours.`,
+    processing_status: 'completed',
+    processing_error: null,
+    uploaded_at: new Date('2026-01-10T10:30:00Z').toISOString()
+  },
+  {
+    id: 'doc-2222-2222-2222-222222222222',
+    project_id: 'p2222222-2222-2222-2222-222222222222',
+    employee_id: 'e4444444-4444-4444-4444-444444444444',
+    original_filename: 'q4_gl_reconciliation_rules.csv',
+    storage_path: 'projects/p2222222-2222-2222-2222-222222222222/q4_gl_reconciliation_rules.csv',
+    mime_type: 'text/csv',
+    file_size: 2340,
+    file_hash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+    extracted_text: `CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: "REC-01", Category: "Cloud Infrastructure", Tolerance: "5%", Approval_Lead: "David Miller" }\nRow 2: { Rule_ID: "REC-02", Category: "Software Licensing", Tolerance: "2%", Approval_Lead: "David Miller" }`,
+    processing_status: 'completed',
+    processing_error: null,
+    uploaded_at: new Date('2026-01-12T14:15:00Z').toISOString()
+  }
+];
+
+// Phase 3 Ingested Document Chunks
+let mockDocumentChunks = [
+  {
+    id: 'chk-1111-1111-1111-111111111111',
+    document_id: 'doc-1111-1111-1111-111111111111',
+    chunk_index: 0,
+    extracted_content: 'Project: Core Infrastructure Migration\nAuthor: Sarah Jenkins\nObjective: Zero-downtime cutover to AWS EKS.\nKey Milestone 1: VPC CNI and dual NAT Gateway topology provisioned.',
+    page_number: null,
+    section_reference: 'Section 1: Architecture Baseline',
+    created_at: new Date('2026-01-10T10:30:05Z').toISOString()
+  },
+  {
+    id: 'chk-2222-2222-2222-222222222222',
+    document_id: 'doc-1111-1111-1111-111111111111',
+    chunk_index: 1,
+    extracted_content: 'Key Milestone 2: Secret management migrated to HashiCorp Vault.\nRisk: Stateful legacy database replica synchronization latency during peak traffic hours.',
+    page_number: null,
+    section_reference: 'Section 2: Security & Identified Risks',
+    created_at: new Date('2026-01-10T10:30:05Z').toISOString()
+  },
+  {
+    id: 'chk-3333-3333-3333-333333333333',
+    document_id: 'doc-2222-2222-2222-222222222222',
+    chunk_index: 0,
+    extracted_content: 'CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: "REC-01", Category: "Cloud Infrastructure", Tolerance: "5%", Approval_Lead: "David Miller" }',
+    page_number: null,
+    section_reference: 'Rows 1-1',
+    created_at: new Date('2026-01-12T14:15:05Z').toISOString()
+  },
+  {
+    id: 'chk-4444-4444-4444-444444444444',
+    document_id: 'doc-2222-2222-2222-222222222222',
+    chunk_index: 1,
+    extracted_content: 'Row 2: { Rule_ID: "REC-02", Category: "Software Licensing", Tolerance: "2%", Approval_Lead: "David Miller" }',
+    page_number: null,
+    section_reference: 'Rows 2-2',
+    created_at: new Date('2026-01-12T14:15:05Z').toISOString()
+  }
+];
+
 // Helper to sanitize employee record based on HR authorization
 function sanitizeEmployee(emp, isHR = false) {
   if (!emp) return null;
@@ -246,7 +318,6 @@ export const db = {
 
   async deleteDepartment(id) {
     if (isConfigured) {
-      // Check if employees exist in this department (ON DELETE RESTRICT)
       const { count, error: countErr } = await supabase
         .from('employees')
         .select('*', { count: 'exact', head: true })
@@ -268,7 +339,6 @@ export const db = {
       return data;
     }
 
-    // Check if any mock employee belongs to this department
     const assignedCount = mockEmployees.filter(e => e.department_id === id).length;
     if (assignedCount > 0) {
       const err = new Error(`Cannot delete department: ${assignedCount} employees are currently assigned to it.`);
@@ -390,14 +460,12 @@ export const db = {
       return sanitizeEmployee(data, isHR);
     }
 
-    // Validate foreign key
     if (!mockDepartments.some(d => d.id === department_id)) {
       const err = new Error(`Department ID "${department_id}" does not exist.`);
       err.code = '23503';
       throw err;
     }
 
-    // Validate unique email
     const cleanEmail = email.trim().toLowerCase();
     if (mockEmployees.some(e => e.email.toLowerCase() === cleanEmail)) {
       const err = new Error(`Employee with email "${cleanEmail}" already exists.`);
@@ -499,7 +567,6 @@ export const db = {
     const idx = mockEmployees.findIndex(e => e.id === id);
     if (idx === -1) return null;
 
-    // Remove from project_members first
     mockProjectMembers = mockProjectMembers.filter(m => m.employee_id !== id);
     const removed = mockEmployees.splice(idx, 1)[0];
     return removed;
@@ -698,7 +765,6 @@ export const db = {
     const idx = mockProjects.findIndex(p => p.id === id);
     if (idx === -1) return null;
 
-    // Delete associated members (ON DELETE CASCADE)
     mockProjectMembers = mockProjectMembers.filter(m => m.project_id !== id);
     const removed = mockProjects.splice(idx, 1)[0];
     return removed;
@@ -774,14 +840,12 @@ export const db = {
       return data;
     }
 
-    // Verify project exists
     if (!mockProjects.some(p => p.id === projectId)) {
       const err = new Error(`Project ID "${projectId}" does not exist.`);
       err.code = '23503';
       throw err;
     }
 
-    // Verify employee exists
     const emp = mockEmployees.find(e => e.id === employee_id);
     if (!emp) {
       const err = new Error(`Employee ID "${employee_id}" does not exist.`);
@@ -789,7 +853,6 @@ export const db = {
       throw err;
     }
 
-    // Check unique (project_id, employee_id)
     if (mockProjectMembers.some(m => m.project_id === projectId && m.employee_id === employee_id)) {
       const err = new Error(`Employee is already assigned to this project.`);
       err.code = '23505';
@@ -840,6 +903,253 @@ export const db = {
   },
 
   // ----------------------------------------------------------------------------
+  // DOCUMENTS (PHASE 3)
+  // ----------------------------------------------------------------------------
+  async getAllDocuments({ project_id, employee_id, processing_status, search } = {}) {
+    if (isConfigured) {
+      let query = supabase.from('documents').select(`
+        *,
+        projects ( id, name ),
+        employees ( id, full_name, designation, email )
+      `);
+
+      if (project_id) query = query.eq('project_id', project_id);
+      if (employee_id) query = query.eq('employee_id', employee_id);
+      if (processing_status) query = query.eq('processing_status', processing_status);
+      if (search) query = query.ilike('original_filename', `%${search}%`);
+
+      const { data, error } = await query.order('uploaded_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+
+    let result = mockDocuments.map(doc => {
+      const proj = mockProjects.find(p => p.id === doc.project_id);
+      const emp = mockEmployees.find(e => e.id === doc.employee_id);
+      const chunks = mockDocumentChunks.filter(c => c.document_id === doc.id);
+      return {
+        ...doc,
+        projects: proj ? { id: proj.id, name: proj.name } : null,
+        employees: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
+        chunk_count: chunks.length
+      };
+    });
+
+    if (project_id) result = result.filter(d => d.project_id === project_id);
+    if (employee_id) result = result.filter(d => d.employee_id === employee_id);
+    if (processing_status) result = result.filter(d => d.processing_status === processing_status);
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(d => d.original_filename.toLowerCase().includes(q));
+    }
+
+    return result.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
+  },
+
+  async getDocumentById(id) {
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          *,
+          projects ( id, name, status ),
+          employees ( id, full_name, designation, email, department_id )
+        `)
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+
+      // Also get chunks count and preview
+      const { data: chunks, error: chunkErr } = await supabase
+        .from('document_chunks')
+        .select('*')
+        .eq('document_id', id)
+        .order('chunk_index', { ascending: true });
+      if (chunkErr) throw chunkErr;
+
+      return {
+        ...data,
+        chunks: chunks || []
+      };
+    }
+
+    const doc = mockDocuments.find(d => d.id === id);
+    if (!doc) return null;
+
+    const proj = mockProjects.find(p => p.id === doc.project_id);
+    const emp = mockEmployees.find(e => e.id === doc.employee_id);
+    const chunks = mockDocumentChunks
+      .filter(c => c.document_id === doc.id)
+      .sort((a, b) => a.chunk_index - b.chunk_index);
+
+    return {
+      ...doc,
+      projects: proj ? { id: proj.id, name: proj.name, status: proj.status } : null,
+      employees: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
+      chunks
+    };
+  },
+
+  async getDocumentChunks(documentId) {
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('document_chunks')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('chunk_index', { ascending: true });
+      if (error) throw error;
+      return data;
+    }
+
+    return mockDocumentChunks
+      .filter(c => c.document_id === documentId)
+      .sort((a, b) => a.chunk_index - b.chunk_index);
+  },
+
+  async findDocumentByHash(projectId, fileHash) {
+    if (!fileHash) return null;
+
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('file_hash', fileHash)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    }
+
+    return mockDocuments.find(d => d.project_id === projectId && d.file_hash === fileHash) || null;
+  },
+
+  async createDocument({ project_id, employee_id, original_filename, storage_path, mime_type, file_size, file_hash, extracted_text, processing_status, processing_error }) {
+    if (isConfigured) {
+      const payload = {
+        project_id,
+        employee_id: employee_id || null,
+        original_filename,
+        storage_path,
+        mime_type,
+        file_size,
+        file_hash,
+        extracted_text,
+        processing_status: processing_status || 'uploaded',
+        processing_error: processing_error || null
+      };
+
+      const { data, error } = await supabase
+        .from('documents')
+        .insert([payload])
+        .select(`
+          *,
+          projects ( id, name ),
+          employees ( id, full_name, designation )
+        `)
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    // Verify project exists
+    if (!mockProjects.some(p => p.id === project_id)) {
+      const err = new Error(`Project ID "${project_id}" does not exist.`);
+      err.code = '23503';
+      throw err;
+    }
+
+    // Verify employee if provided
+    if (employee_id && !mockEmployees.some(e => e.id === employee_id)) {
+      const err = new Error(`Employee ID "${employee_id}" does not exist.`);
+      err.code = '23503';
+      throw err;
+    }
+
+    const newDoc = {
+      id: crypto.randomUUID(),
+      project_id,
+      employee_id: employee_id || null,
+      original_filename,
+      storage_path,
+      mime_type,
+      file_size,
+      file_hash,
+      extracted_text: extracted_text || null,
+      processing_status: processing_status || 'uploaded',
+      processing_error: processing_error || null,
+      uploaded_at: new Date().toISOString()
+    };
+    mockDocuments.push(newDoc);
+
+    const proj = mockProjects.find(p => p.id === project_id);
+    const emp = employee_id ? mockEmployees.find(e => e.id === employee_id) : null;
+
+    return {
+      ...newDoc,
+      projects: proj ? { id: proj.id, name: proj.name } : null,
+      employees: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation } : null
+    };
+  },
+
+  async saveDocumentChunks(documentId, chunks = []) {
+    if (chunks.length === 0) return [];
+
+    if (isConfigured) {
+      const payloads = chunks.map(c => ({
+        document_id: documentId,
+        chunk_index: c.chunk_index,
+        extracted_content: c.extracted_content,
+        page_number: c.page_number !== undefined ? c.page_number : null,
+        section_reference: c.section_reference || null
+      }));
+
+      const { data, error } = await supabase
+        .from('document_chunks')
+        .insert(payloads)
+        .select();
+      if (error) throw error;
+      return data;
+    }
+
+    const created = chunks.map(c => {
+      const chunkObj = {
+        id: crypto.randomUUID(),
+        document_id: documentId,
+        chunk_index: c.chunk_index,
+        extracted_content: c.extracted_content,
+        page_number: c.page_number !== undefined ? c.page_number : null,
+        section_reference: c.section_reference || null,
+        created_at: new Date().toISOString()
+      };
+      mockDocumentChunks.push(chunkObj);
+      return chunkObj;
+    });
+
+    return created;
+  },
+
+  async deleteDocument(id) {
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    const idx = mockDocuments.findIndex(d => d.id === id);
+    if (idx === -1) return null;
+
+    // Delete associated chunks (ON DELETE CASCADE)
+    mockDocumentChunks = mockDocumentChunks.filter(c => c.document_id !== id);
+    const removed = mockDocuments.splice(idx, 1)[0];
+    return removed;
+  },
+
+  // ----------------------------------------------------------------------------
   // DASHBOARD AGGREGATE COUNTS
   // ----------------------------------------------------------------------------
   async getDashboardStats() {
@@ -849,13 +1159,15 @@ export const db = {
         { count: empCount, error: empErr },
         { count: projCount, error: projErr },
         { count: activeProjCount, error: activeErr },
-        { count: pendingHandoverCount, error: handErr }
+        { count: pendingHandoverCount, error: handErr },
+        { count: docCount, error: docErr }
       ] = await Promise.all([
         supabase.from('departments').select('*', { count: 'exact', head: true }),
         supabase.from('employees').select('*', { count: 'exact', head: true }),
         supabase.from('projects').select('*', { count: 'exact', head: true }),
         supabase.from('projects').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
-        supabase.from('employees').select('*', { count: 'exact', head: true }).in('employment_status', ['handover_pending', 'resigned'])
+        supabase.from('employees').select('*', { count: 'exact', head: true }).in('employment_status', ['handover_pending', 'resigned']),
+        supabase.from('documents').select('*', { count: 'exact', head: true })
       ]);
 
       if (deptErr || empErr || projErr) {
@@ -867,7 +1179,8 @@ export const db = {
         employees: empCount ?? 0,
         projects: projCount ?? 0,
         activeProjects: activeProjCount ?? 0,
-        handoverPending: pendingHandoverCount ?? 0
+        handoverPending: pendingHandoverCount ?? 0,
+        documents: docCount ?? 0
       };
     }
 
@@ -876,7 +1189,9 @@ export const db = {
       employees: mockEmployees.length,
       projects: mockProjects.length,
       activeProjects: mockProjects.filter(p => p.status === 'in_progress').length,
-      handoverPending: mockEmployees.filter(e => e.employment_status === 'handover_pending' || e.employment_status === 'resigned').length
+      handoverPending: mockEmployees.filter(e => e.employment_status === 'handover_pending' || e.employment_status === 'resigned').length,
+      documents: mockDocuments.length,
+      totalChunks: mockDocumentChunks.length
     };
   }
 };

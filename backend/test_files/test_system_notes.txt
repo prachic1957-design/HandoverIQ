@@ -1,0 +1,7 @@
+HandoverIQ Technical System Notes
+Author: Sarah Jenkins
+Date: 2026-03-15
+Service: Core Kubernetes Cluster
+The primary EKS cluster runs across 3 Availability Zones with managed node groups.
+Authentication is handled via IAM roles for service accounts (IRSA).
+Critical Runbook Step: Before upgrading EKS control plane to v1.31, ensure coreDNS add-on is upgraded first.

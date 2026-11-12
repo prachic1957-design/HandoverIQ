@@ -5,6 +5,7 @@ import DashboardOverview from './components/DashboardOverview';
 import DepartmentsView from './components/DepartmentsView';
 import EmployeesView from './components/EmployeesView';
 import ProjectsView from './components/ProjectsView';
+import KnowledgeUploadView from './components/KnowledgeUploadView';
 import ModulePlaceholder from './components/ModulePlaceholder';
 
 export default function App() {
@@ -48,6 +49,8 @@ export default function App() {
         return <EmployeesView />;
       case 'projects':
         return <ProjectsView />;
+      case 'upload':
+        return <KnowledgeUploadView />;
       default:
         return <ModulePlaceholder moduleId={activeTab} />;
     }

@@ -118,3 +118,4 @@ COMMENT ON TABLE employees IS 'HandoverIQ: Employee profiles with isolated confi
 COMMENT ON COLUMN employees.salary IS 'CONFIDENTIAL: Never expose to general AI prompts or ordinary employees';
 COMMENT ON TABLE projects IS 'HandoverIQ: Enterprise projects tracked for knowledge continuity';
 COMMENT ON TABLE project_members IS 'HandoverIQ: Employee-to-project mappings with specific responsibilities';
+

@@ -125,3 +125,4 @@ VALUES
         'completed'
     )
 ON CONFLICT (project_id, employee_id) DO NOTHING;
+

@@ -6,6 +6,7 @@ import departmentsRouter from './routes/departments.js';
 import employeesRouter from './routes/employees.js';
 import projectsRouter from './routes/projects.js';
 import dashboardRouter from './routes/dashboard.js';
+import documentsRouter, { projectDocumentsHandler } from './routes/documents.js';
 
 const app = express();
 
@@ -29,6 +30,10 @@ app.use('/api/departments', departmentsRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/documents', documentsRouter);
+
+// Nested project documents route
+app.get('/api/projects/:id/documents', projectDocumentsHandler);
 
 // Fallback route
 app.get('/', (req, res) => {
@@ -36,12 +41,13 @@ app.get('/', (req, res) => {
     message: 'Welcome to HandoverIQ Backend API',
     team: 'ROGUENOVA',
     tagline: 'Preserve Knowledge. Power Continuity.',
-    version: '1.2.0-phase2',
+    version: '1.3.0-phase3',
     endpoints: {
       health: '/api/health',
       departments: '/api/departments',
       employees: '/api/employees',
       projects: '/api/projects',
+      documents: '/api/documents',
       dashboardStats: '/api/dashboard/stats'
     }
   });
@@ -50,7 +56,8 @@ app.get('/', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('[HandoverIQ Error]', err);
-  res.status(err.status || 500).json({
+  const status = err.status || (err.message && err.message.includes('Unsupported file type') ? 400 : 500);
+  res.status(status).json({
     success: false,
     error: err.name || 'Internal Server Error',
     message: err.message
@@ -60,13 +67,10 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(config.port, () => {
   console.log('========================================================');
-  console.log(`🚀 HandoverIQ Backend Service Active (Phase 2)`);
+  console.log(`🚀 HandoverIQ Backend Service Active (Phase 3)`);
   console.log(`🏢 Team: ROGUENOVA`);
   console.log(`🌐 Server running at: http://localhost:${config.port}`);
   console.log(`🩺 Health endpoint: http://localhost:${config.port}/api/health`);
-  console.log(`📊 Departments API: http://localhost:${config.port}/api/departments`);
-  console.log(`👥 Employees API:   http://localhost:${config.port}/api/employees`);
-  console.log(`💼 Projects API:    http://localhost:${config.port}/api/projects`);
-  console.log(`📈 Dashboard Stats: http://localhost:${config.port}/api/dashboard/stats`);
-  console.log('========================================================');
+  console.log(`📁 Documents API:   http://localhost:${config.port}/api/documents`);
+  console.log(`========================================================`);
 });

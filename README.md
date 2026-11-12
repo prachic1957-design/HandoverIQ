@@ -19,9 +19,10 @@ The system collects authorized employee-specific project information, reconstruc
 | Layer | Technology |
 |---|---|
 | **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons |
-| **Backend** | Node.js, Express.js |
-| **Database & Storage** | Supabase (PostgreSQL) & Supabase Object Storage |
-| **Artificial Intelligence** | Google Gemini API (Structured Work History & Milestones) |
+| **Backend** | Node.js, Express.js, Multer |
+| **Document Processing** | `pdf-parse` (Page extraction), `mammoth` (DOCX), Text & CSV parsing |
+| **Database & Storage** | Supabase (PostgreSQL) & Supabase Storage (`handover-documents` private bucket) |
+| **Artificial Intelligence** | Google Gemini API (Structured Work History & Milestones — Phase 4) |
 | **Design System** | Dark Navy (`#0B1020`), Deep Blue (`#14213D`), Electric Blue (`#3B82F6`) |
 
 ---
@@ -33,7 +34,7 @@ Company
   └── Departments (IT, HR, Finance, Marketing, Operations)
         └── Employees (HR-isolated salary privacy)
               └── Projects (Responsibilities & milestones)
-                    └── Knowledge Upload (PDF, DOCX, TXT, CSV)
+                    └── Knowledge Upload (PDF, DOCX, TXT, CSV) ◄── [Phase 3 Completed]
                           └── AI Reconstruction (Milestones, risks, blockers)
                                 └── Evidence-Linked Report (Source-cited claims)
                                       └── Human Review (Employee amendments)
@@ -54,10 +55,10 @@ HandoverIQ manages relational entity tables with strict primary/foreign keys, un
 - `employees`: Staff profiles with role assignments (`id`, `full_name`, `email`, `designation`, `department_id`, `joining_date`, `employment_status`, `salary`, `created_at`)
 - `projects`: Monitored initiatives (`id`, `name`, `description`, `status`, `start_date`, `end_date`, `created_at`)
 - `project_members`: Specific team member assignments with ownership responsibilities and work statuses (`id`, `project_id`, `employee_id`, `responsibility`, `work_status`, `created_at`)
+- `documents`: Ingested technical files with metadata and processing status (`id`, `project_id`, `employee_id`, `original_filename`, `storage_path`, `mime_type`, `file_size`, `file_hash`, `extracted_text`, `processing_status`, `processing_error`, `uploaded_at`)
+- `document_chunks`: Granular text chunks with strict page/section source coordinates (`id`, `document_id`, `chunk_index`, `extracted_content`, `page_number`, `section_reference`, `created_at`)
 
 ### 2. Migration Execution Instructions
-
-To set up your Supabase database:
 
 1. Open your [Supabase Dashboard](https://supabase.com/dashboard) and navigate to **SQL Editor**.
 2. Run migration **[supabase/migrations/20261112000000_create_core_schema.sql](file:///d:/AI-Powered%20Employee%20Knowledge%20Handover%20&%20Replacement%20Management%20System/supabase/migrations/20261112000000_create_core_schema.sql)**.
@@ -66,16 +67,20 @@ To set up your Supabase database:
    - Configures the `public_employees` view which omits confidential compensation data.
 3. Run seed migration **[supabase/migrations/20261112000001_seed_demo_data.sql](file:///d:/AI-Powered%20Employee%20Knowledge%20Handover%20&%20Replacement%20Management%20System/supabase/migrations/20261112000001_seed_demo_data.sql)**.
    - Idempotently populates 3 departments (IT, HR, Finance), 5 employees, 2 enterprise projects, and mapped member responsibilities (`ON CONFLICT DO NOTHING`).
-4. Copy your **Project URL**, **anon key**, and **service_role key** from *Project Settings → API* into `backend/.env`.
+4. Run migration **[supabase/migrations/20261112000002_create_documents_schema.sql](file:///d:/AI-Powered%20Employee%20Knowledge%20Handover%20&%20Replacement%20Management%20System/supabase/migrations/20261112000002_create_documents_schema.sql)**.
+   - Creates private Supabase Storage bucket `handover-documents`.
+   - Creates `documents` and `document_chunks` tables with integrity indexes and foreign keys.
 
 ---
 
-## 🔐 Security & Confidential Salary Safeguards
+## 📄 Supported Document Formats & Text Extraction
 
-- **Backend RBAC Isolation**: Employee compensation figures (`salary`) are strictly omitted from standard employee/manager queries at the database query and backend layer.
-- **Header/Token Verification**: Only requests containing authorized HR roles (`x-user-role: hr`) receive or modify salary data.
-- **AI Context Isolation**: Salary data is shielded by design and **never** included in prompt contexts sent to Google Gemini.
-- **Database View**: A public database view `public_employees` is provided which excludes salary entirely.
+| Format | Extension | Text Extraction Strategy | Source Reference Coordinates |
+|---|---|---|---|
+| **Portable Document Format** | `.pdf` | Multi-page text extraction via `pdf-parse` (detects scanned/empty PDFs & flags `needs_ocr`) | Exact Page Numbers (`Page 1`, `Page 2`, ...) |
+| **Word Document** | `.docx` | Semantic raw text extraction via `mammoth` | Document Section & Paragraph Coordinates |
+| **Plain Text** | `.txt` | UTF-8 decoded stream chunking with sentence overlap | Section / Paragraph References |
+| **Structured CSV** | `.csv` | Row-and-column schema preserving header context | Row Coordinates (`Rows 1-5`, `Rows 6-10`, ...) |
 
 ---
 
@@ -85,37 +90,24 @@ To set up your Supabase database:
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/health` | Backend and service connectivity health monitor |
-| `GET` | `/api/dashboard/stats` | Real-time counts (departments, employees, projects, active handovers) |
+| `GET` | `/api/dashboard/stats` | Real-time counts (departments, employees, projects, active handovers, documents) |
 
-### Departments
+### Knowledge Ingestion (Phase 3)
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/departments` | List all departments with descriptions |
-| `GET` | `/api/departments/:id` | Get specific department by UUID |
-| `POST` | `/api/departments` | Create new department (`name` required, unique) |
-| `PUT` | `/api/departments/:id` | Update department name or description |
-| `DELETE`| `/api/departments/:id` | Delete department (`RESTRICT` if employees assigned) |
+| `POST` | `/api/documents/upload` | Multipart upload with text extraction, chunking, and SHA-256 duplicate detection |
+| `GET` | `/api/documents` | List ingested documents (supports `?project_id=`, `?employee_id=`, `?search=`) |
+| `GET` | `/api/documents/:id` | Get document metadata and extracted text preview |
+| `GET` | `/api/documents/:id/chunks` | Get source-linked text chunks with page/row coordinates |
+| `GET` | `/api/documents/:id/download` | Securely stream and download original uploaded file |
+| `DELETE`| `/api/documents/:id` | Permanently delete file from storage and remove chunks |
+| `GET` | `/api/projects/:id/documents`| Retrieve all documentation linked to a specific project |
 
-### Employees
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/employees` | List all employees (supports `?department_id=` & `?search=`). Salary is hidden unless authorized with `x-user-role: hr` |
-| `GET` | `/api/employees/:id` | Get specific employee profile |
-| `POST` | `/api/employees` | Register new employee (`full_name`, `email`, `designation`, `department_id`) |
-| `PUT` | `/api/employees/:id` | Update employee profile or status |
-| `DELETE`| `/api/employees/:id` | Remove employee and detach project responsibilities |
-
-### Projects & Assignments
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/projects` | List all projects (supports `?status=` & `?search=`) |
-| `GET` | `/api/projects/:id` | Get project details with full assigned members and responsibilities |
-| `POST` | `/api/projects` | Create project (`name`, `description`, `status`, dates) |
-| `PUT` | `/api/projects/:id` | Update project metadata |
-| `DELETE`| `/api/projects/:id` | Delete project (`CASCADE` members) |
-| `GET` | `/api/projects/:id/members` | List employees assigned to a project |
-| `POST` | `/api/projects/:id/members` | Assign employee with specific responsibility & work status |
-| `DELETE`| `/api/projects/:id/members/:employeeId` | Remove employee assignment from project |
+### Departments, Employees & Projects (Phase 2)
+- `/api/departments` — Full CRUD for organizational units
+- `/api/employees` — Full CRUD with confidential salary RBAC
+- `/api/projects` — Full CRUD for monitored projects
+- `/api/projects/:id/members` — Project member assignments with specific ownership responsibilities
 
 ---
 
@@ -132,14 +124,14 @@ npm run dev
 cd frontend
 npm run dev
 ```
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173** in your browser and click on **Knowledge Upload**.
 
 ### 3. Run Automated Backend Tests
 ```bash
 cd backend
 npm test
 ```
-*Validates 26 automated assertions across live stats, department CRUD, employee RBAC salary shielding, foreign key restrictions, project management, and member assignments.*
+*Validates 66 automated assertions across Phase 2 (26 tests) and Phase 3 (40 tests).*
 
 ---
 
@@ -149,16 +141,16 @@ npm test
   - React + Vite + Tailwind setup
   - Node.js + Express backend setup
   - Dark Navy & Electric Blue enterprise dashboard UI
-  - Real-time backend connection health monitoring
 - [x] **PHASE 2: Database & Core Management**
   - Supabase PostgreSQL schema with RLS and indexes
   - Synthetic demo data migration (3 depts, 5 employees, 2 projects)
   - Department, Employee (with HR salary shield), and Project CRUD APIs
-  - Project member responsibility and work status assignment
-  - Live dynamic dashboard counts from database
-- [ ] **PHASE 3: Knowledge Ingestion**
-  - Multi-format document parser (PDF, DOCX, TXT, CSV)
-  - Supabase storage integration with citation metadata
+- [x] **PHASE 3: Knowledge Ingestion & Document Processing**
+  - Private Supabase Storage bucket (`handover-documents`) & local secured disk fallback
+  - Document parser & text extractor for PDF, DOCX, TXT, CSV
+  - Scanned PDF detection & `needs_ocr` status flagging
+  - Granular chunking with traceable page/section coordinates
+  - Drag-and-drop UI with document inspector and chunk browser
 - [ ] **PHASE 4: AI Reconstruction**
   - Google Gemini API integration
   - Milestone, task, blocker & risk extraction

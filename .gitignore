@@ -1,17 +1,33 @@
 # HandoverIQ - Git Ignore Configuration
+# Team: ROGUENOVA
+
+# Dependencies
 node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment Variables & Secrets
 .env
-.env*.local
-.DS_Store
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.local
+
+# Build outputs
 dist/
 dist-ssr/
-*.local
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+build/
+backend/dist/
+frontend/dist/
 
-# IDE & Editor files
+# OS & Editor files
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.suo
@@ -20,7 +36,18 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
+# Logs and runtime files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Uploaded files
+# Uploaded documents & storage fallbacks
 uploads/
 backend/uploads/
+storage/
+temp/
+tmp/
+

@@ -131,7 +131,7 @@ Open **http://localhost:5173** in your browser and click on **Knowledge Upload**
 cd backend
 npm test
 ```
-*Validates 66 automated assertions across Phase 2 (26 tests) and Phase 3 (40 tests).*
+*Validates 95 automated assertions across Phase 2 (26 tests), Phase 3 (40 tests), Phase 4 (14 tests), and Phase 5 (15 tests).*
 
 ---
 
@@ -151,16 +151,36 @@ npm test
   - Scanned PDF detection & `needs_ocr` status flagging
   - Granular chunking with traceable page/section coordinates
   - Drag-and-drop UI with document inspector and chunk browser
-- [ ] **PHASE 4: AI Reconstruction**
-  - Google Gemini API integration
+- [x] **PHASE 4: AI Reconstruction**
+  - Google Gemini API integration (mock mode when `GEMINI_API_KEY` not set)
+  - Structured knowledge reconstruction endpoints:
+    - `POST /api/knowledge/analyze`
+    - `GET /api/knowledge/analyses`
+    - `GET /api/knowledge/analyses/:id`
+    - `GET /api/knowledge/analyses/:id/findings`
+    - `PATCH /api/knowledge/findings/:id/review`
+  - Evidence‑linked findings with review workflow
+  - Anti-hallucination chunk citation validation
   - Milestone, task, blocker & risk extraction
-- [ ] **PHASE 5: Handover & Replacement**
-  - Evidence-linked report generation
-  - Human review & manager approval workflows
-  - Successor onboarding briefing generator
+- [x] **PHASE 5: Handover & Replacement**
+  - Handover package generation linking verified analysis to project transitions
+  - Human review & manager approval workflows (`draft`, `under_review`, `approved`, `assigned`, `in_progress`, `completed`, `rejected`)
+  - Status audit trail recording actor attribution
+  - Successor replacement employee assignment with business rule validation (prevent self-replacement, prevent duplicate assignment)
+  - Structured Day-1 Replacement Briefing generation based strictly on manager-approved findings
+  - Handover and Replacements management UI
 - [ ] **PHASE 6: Testing & Deployment**
   - End-to-end testing, error handling & production hosting
 
 ---
 
+## ⚠️ Demo & Environment Disclosures
+
+- **Database Persistence**: Running by default in an In-Memory Synthetic Repository mode when Supabase credentials are not populated in `backend/.env`. Complete idempotent schema migrations through Phase 5 (`supabase/migrations/`) are provided for one-click setup against any Supabase PostgreSQL instance.
+- **Gemini AI Engine**: Runs in validated mock simulation mode when `GEMINI_API_KEY` is not populated. Set `GEMINI_API_KEY` in `backend/.env` for live Google Gemini 2.5 Flash generation.
+- **Authentication**: Demo RBAC mode active for local presentation. Production security and external OAuth/JWT verification are reserved for Phase 6 deployment.
+
+---
+
 **HandoverIQ** — Created by Team **ROGUENOVA** for the Hackathon.
+Tagline: *Preserve Knowledge. Power Continuity.*

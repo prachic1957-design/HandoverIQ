@@ -113,3 +113,4 @@ export const storage = {
     return true;
   }
 };
+

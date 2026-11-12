@@ -7,6 +7,8 @@ import employeesRouter from './routes/employees.js';
 import projectsRouter from './routes/projects.js';
 import dashboardRouter from './routes/dashboard.js';
 import documentsRouter, { projectDocumentsHandler } from './routes/documents.js';
+import knowledgeRouter from './routes/knowledge.js';
+import handoversRouter from './routes/handovers.js';
 
 const app = express();
 
@@ -29,8 +31,10 @@ app.use('/api/health', healthRouter);
 app.use('/api/departments', departmentsRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/projects', projectsRouter);
-app.use('/api/dashboard', dashboardRouter);
 app.use('/api/documents', documentsRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/knowledge', knowledgeRouter);
+app.use('/api/handovers', handoversRouter);
 
 // Nested project documents route
 app.get('/api/projects/:id/documents', projectDocumentsHandler);
@@ -41,14 +45,26 @@ app.get('/', (req, res) => {
     message: 'Welcome to HandoverIQ Backend API',
     team: 'ROGUENOVA',
     tagline: 'Preserve Knowledge. Power Continuity.',
-    version: '1.3.0-phase3',
+    version: '1.5.0-phase5',
     endpoints: {
       health: '/api/health',
       departments: '/api/departments',
       employees: '/api/employees',
       projects: '/api/projects',
       documents: '/api/documents',
-      dashboardStats: '/api/dashboard/stats'
+      dashboardStats: '/api/dashboard/stats',
+      knowledgeAnalyze: 'POST /api/knowledge/analyze',
+      knowledgeAnalyses: 'GET /api/knowledge/analyses',
+      knowledgeAnalysisById: 'GET /api/knowledge/analyses/:id',
+      knowledgeFindings: 'GET /api/knowledge/analyses/:id/findings',
+      knowledgeFindingReview: 'PATCH /api/knowledge/findings/:id/review',
+      handoversCreate: 'POST /api/handovers',
+      handoversList: 'GET /api/handovers',
+      handoversGetById: 'GET /api/handovers/:id',
+      handoversUpdateStatus: 'PATCH /api/handovers/:id/status',
+      handoversAssignReplacement: 'POST /api/handovers/:id/assign',
+      handoversBriefing: 'GET /api/handovers/:id/briefing',
+      handoversHistory: 'GET /api/handovers/:id/history'
     }
   });
 });

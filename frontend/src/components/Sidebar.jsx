@@ -20,6 +20,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'upload', label: 'Knowledge Upload', icon: UploadCloud },
     { id: 'reports', label: 'Handover Reports', icon: FileText },
+    { id: 'knowledge', label: 'Knowledge Reconstruction', icon: Sparkles },
     { id: 'replacements', label: 'Replacements', icon: UserCheck },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

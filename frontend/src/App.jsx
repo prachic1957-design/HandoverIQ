@@ -6,6 +6,8 @@ import DepartmentsView from './components/DepartmentsView';
 import EmployeesView from './components/EmployeesView';
 import ProjectsView from './components/ProjectsView';
 import KnowledgeUploadView from './components/KnowledgeUploadView';
+import KnowledgeReconstructionView from './components/KnowledgeReconstructionView';
+import HandoverReportsView from './components/HandoverReportsView';
 import ModulePlaceholder from './components/ModulePlaceholder';
 
 export default function App() {
@@ -51,6 +53,11 @@ export default function App() {
         return <ProjectsView />;
       case 'upload':
         return <KnowledgeUploadView />;
+      case 'reports':
+      case 'replacements':
+        return <HandoverReportsView />;
+      case 'knowledge':
+        return <KnowledgeReconstructionView />;
       default:
         return <ModulePlaceholder moduleId={activeTab} />;
     }

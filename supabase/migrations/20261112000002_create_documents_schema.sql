@@ -81,3 +81,4 @@ CREATE POLICY "Allow write access on document_chunks" ON document_chunks
 COMMENT ON TABLE documents IS 'HandoverIQ: Ingested employee and project source documents with extraction lifecycle metadata';
 COMMENT ON COLUMN documents.storage_path IS 'Encrypted object key within private handover-documents bucket or local secured store';
 COMMENT ON TABLE document_chunks IS 'HandoverIQ: Traceable text segments with strict page/row/section coordinate mapping for Phase 4 AI analysis';
+

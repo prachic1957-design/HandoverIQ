@@ -1,3 +1,4 @@
+// Full repository file (original content up to line 1195) reconstructed from backup
 import { supabase, isConfigured } from '../config/supabase.js';
 import crypto from 'crypto';
 
@@ -164,7 +165,7 @@ let mockDocuments = [
     mime_type: 'text/csv',
     file_size: 2340,
     file_hash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
-    extracted_text: `CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: "REC-01", Category: "Cloud Infrastructure", Tolerance: "5%", Approval_Lead: "David Miller" }\nRow 2: { Rule_ID: "REC-02", Category: "Software Licensing", Tolerance: "2%", Approval_Lead: "David Miller" }`,
+    extracted_text: `CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: \"REC-01\", Category: \"Cloud Infrastructure\", Tolerance: \"5%\", Approval_Lead: \"David Miller\" }\nRow 2: { Rule_ID: \"REC-02\", Category: \"Software Licensing\", Tolerance: \"2%\", Approval_Lead: \"David Miller\" }`,
     processing_status: 'completed',
     processing_error: null,
     uploaded_at: new Date('2026-01-12T14:15:00Z').toISOString()
@@ -195,7 +196,7 @@ let mockDocumentChunks = [
     id: 'chk-3333-3333-3333-333333333333',
     document_id: 'doc-2222-2222-2222-222222222222',
     chunk_index: 0,
-    extracted_content: 'CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: "REC-01", Category: "Cloud Infrastructure", Tolerance: "5%", Approval_Lead: "David Miller" }',
+    extracted_content: 'CSV Dataset Schema: [Rule_ID | Category | Tolerance | Approval_Lead]\nRow 1: { Rule_ID: \"REC-01\", Category: \"Cloud Infrastructure\", Tolerance: \"5%\", Approval_Lead: \"David Miller\" }',
     page_number: null,
     section_reference: 'Rows 1-1',
     created_at: new Date('2026-01-12T14:15:05Z').toISOString()
@@ -204,7 +205,7 @@ let mockDocumentChunks = [
     id: 'chk-4444-4444-4444-444444444444',
     document_id: 'doc-2222-2222-2222-222222222222',
     chunk_index: 1,
-    extracted_content: 'Row 2: { Rule_ID: "REC-02", Category: "Software Licensing", Tolerance: "2%", Approval_Lead: "David Miller" }',
+    extracted_content: 'Row 2: { Rule_ID: \"REC-02\", Category: \"Software Licensing\", Tolerance: \"2%\", Approval_Lead: \"David Miller\" }',
     page_number: null,
     section_reference: 'Rows 2-2',
     created_at: new Date('2026-01-12T14:15:05Z').toISOString()
@@ -221,13 +222,13 @@ function sanitizeEmployee(emp, isHR = false) {
   return clone;
 }
 
-// ==============================================================================
+// ===========================================================================
 // REPOSITORY IMPLEMENTATION
-// ==============================================================================
+// ===========================================================================
 export const db = {
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // DEPARTMENTS
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getAllDepartments() {
     if (isConfigured) {
       const { data, error } = await supabase
@@ -266,7 +267,7 @@ export const db = {
 
     const trimmedName = name.trim();
     if (mockDepartments.some(d => d.name.toLowerCase() === trimmedName.toLowerCase())) {
-      const err = new Error(`Department with name "${trimmedName}" already exists.`);
+      const err = new Error(`Department with name \"${trimmedName}\" already exists.`);
       err.code = '23505';
       throw err;
     }
@@ -304,7 +305,7 @@ export const db = {
       const trimmed = name.trim();
       const conflict = mockDepartments.some(d => d.id !== id && d.name.toLowerCase() === trimmed.toLowerCase());
       if (conflict) {
-        const err = new Error(`Department with name "${trimmed}" already exists.`);
+        const err = new Error(`Department with name \"${trimmed}\" already exists.`);
         err.code = '23505';
         throw err;
       }
@@ -352,9 +353,9 @@ export const db = {
     return removed;
   },
 
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // EMPLOYEES
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getAllEmployees({ department_id, search, isHR = false }) {
     if (isConfigured) {
       let query = supabase.from('employees').select(`
@@ -461,14 +462,14 @@ export const db = {
     }
 
     if (!mockDepartments.some(d => d.id === department_id)) {
-      const err = new Error(`Department ID "${department_id}" does not exist.`);
+      const err = new Error(`Department ID \"${department_id}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
 
     const cleanEmail = email.trim().toLowerCase();
     if (mockEmployees.some(e => e.email.toLowerCase() === cleanEmail)) {
-      const err = new Error(`Employee with email "${cleanEmail}" already exists.`);
+      const err = new Error(`Employee with email \"${cleanEmail}\" already exists.`);
       err.code = '23505';
       throw err;
     }
@@ -520,7 +521,7 @@ export const db = {
     if (idx === -1) return null;
 
     if (updates.department_id && !mockDepartments.some(d => d.id === updates.department_id)) {
-      const err = new Error(`Department ID "${updates.department_id}" does not exist.`);
+      const err = new Error(`Department ID \"${updates.department_id}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
@@ -529,7 +530,7 @@ export const db = {
       const cleanEmail = updates.email.trim().toLowerCase();
       const conflict = mockEmployees.some(e => e.id !== id && e.email.toLowerCase() === cleanEmail);
       if (conflict) {
-        const err = new Error(`Employee with email "${cleanEmail}" already exists.`);
+        const err = new Error(`Employee with email \"${cleanEmail}\" already exists.`);
         err.code = '23505';
         throw err;
       }
@@ -572,9 +573,9 @@ export const db = {
     return removed;
   },
 
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // PROJECTS
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getAllProjects({ status, search } = {}) {
     if (isConfigured) {
       let query = supabase.from('projects').select(`
@@ -770,9 +771,9 @@ export const db = {
     return removed;
   },
 
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // PROJECT MEMBERS
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getProjectMembers(projectId) {
     if (isConfigured) {
       const { data, error } = await supabase
@@ -792,7 +793,6 @@ export const db = {
       if (error) throw error;
       return data;
     }
-
     return mockProjectMembers
       .filter(m => m.project_id === projectId)
       .map(m => {
@@ -841,14 +841,14 @@ export const db = {
     }
 
     if (!mockProjects.some(p => p.id === projectId)) {
-      const err = new Error(`Project ID "${projectId}" does not exist.`);
+      const err = new Error(`Project ID \"${projectId}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
 
     const emp = mockEmployees.find(e => e.id === employee_id);
     if (!emp) {
-      const err = new Error(`Employee ID "${employee_id}" does not exist.`);
+      const err = new Error(`Employee ID \"${employee_id}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
@@ -902,9 +902,9 @@ export const db = {
     return removed;
   },
 
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // DOCUMENTS (PHASE 3)
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getAllDocuments({ project_id, employee_id, processing_status, search } = {}) {
     if (isConfigured) {
       let query = supabase.from('documents').select(`
@@ -1000,9 +1000,47 @@ export const db = {
       if (error) throw error;
       return data;
     }
-
     return mockDocumentChunks
       .filter(c => c.document_id === documentId)
+      .sort((a, b) => a.chunk_index - b.chunk_index);
+  },
+
+  async getDocumentChunksByProject(projectId) {
+    if (isConfigured) {
+      const { data: docs, error: docErr } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('project_id', projectId);
+      if (docErr) throw docErr;
+      if (!docs || docs.length === 0) return [];
+      const docIds = docs.map(d => d.id);
+      const { data: chunks, error: chunkErr } = await supabase
+        .from('document_chunks')
+        .select('*, documents(id, project_id, employee_id, original_filename)')
+        .in('document_id', docIds)
+        .order('chunk_index', { ascending: true });
+      if (chunkErr) throw chunkErr;
+      return (chunks || []).map(c => ({
+        ...c,
+        project_id: c.documents?.project_id || projectId,
+        employee_id: c.documents?.employee_id || null,
+        original_filename: c.documents?.original_filename || 'document.txt'
+      }));
+    }
+    const projectDocs = mockDocuments.filter(d => d.project_id === projectId);
+    const projectDocIds = new Set(projectDocs.map(d => d.id));
+    const docMap = new Map(projectDocs.map(d => [d.id, d]));
+    return mockDocumentChunks
+      .filter(c => projectDocIds.has(c.document_id))
+      .map(c => {
+        const doc = docMap.get(c.document_id);
+        return {
+          ...c,
+          project_id: doc ? doc.project_id : projectId,
+          employee_id: doc ? doc.employee_id : null,
+          original_filename: doc ? doc.original_filename : 'document.txt'
+        };
+      })
       .sort((a, b) => a.chunk_index - b.chunk_index);
   },
 
@@ -1053,14 +1091,14 @@ export const db = {
 
     // Verify project exists
     if (!mockProjects.some(p => p.id === project_id)) {
-      const err = new Error(`Project ID "${project_id}" does not exist.`);
+      const err = new Error(`Project ID \"${project_id}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
 
     // Verify employee if provided
     if (employee_id && !mockEmployees.some(e => e.id === employee_id)) {
-      const err = new Error(`Employee ID "${employee_id}" does not exist.`);
+      const err = new Error(`Employee ID \"${employee_id}\" does not exist.`);
       err.code = '23503';
       throw err;
     }
@@ -1149,9 +1187,9 @@ export const db = {
     return removed;
   },
 
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // DASHBOARD AGGREGATE COUNTS
-  // ----------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   async getDashboardStats() {
     if (isConfigured) {
       const [
@@ -1193,5 +1231,380 @@ export const db = {
       documents: mockDocuments.length,
       totalChunks: mockDocumentChunks.length
     };
+  },
+
+  // ---------------------------------------------------------------------------
+  // KNOWLEDGE RECONSTRUCTION (PHASE 4)
+  // ---------------------------------------------------------------------------
+  async createKnowledgeAnalysis({ project_id, employee_id, model_name, analysis_summary, structured_result }) {
+    if (isConfigured) {
+      const payload = { project_id, employee_id, model_name, analysis_summary, structured_result, status: 'completed' };
+      const { data, error } = await supabase.from('knowledge_analyses').insert([payload]).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const newAnalysis = {
+      id: crypto.randomUUID(),
+      project_id,
+      employee_id,
+      status: 'completed',
+      model_name,
+      analysis_summary,
+      structured_result,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (!global.mockKnowledgeAnalyses) global.mockKnowledgeAnalyses = [];
+    global.mockKnowledgeAnalyses.push(newAnalysis);
+    return newAnalysis;
+  },
+
+  async getKnowledgeAnalysisById(id) {
+    if (isConfigured) {
+      const { data, error } = await supabase.from('knowledge_analyses').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    }
+    if (!global.mockKnowledgeAnalyses) return null;
+    return global.mockKnowledgeAnalyses.find(a => a.id === id) || null;
+  },
+
+  async listKnowledgeAnalyses({ project_id, employee_id } = {}) {
+    if (isConfigured) {
+      let query = supabase.from('knowledge_analyses').select('*');
+      if (project_id) query = query.eq('project_id', project_id);
+      if (employee_id) query = query.eq('employee_id', employee_id);
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+    if (!global.mockKnowledgeAnalyses) return [];
+    let result = [...global.mockKnowledgeAnalyses];
+    if (project_id) result = result.filter(a => a.project_id === project_id);
+    if (employee_id) result = result.filter(a => a.employee_id === employee_id);
+    return result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  },
+
+  async createKnowledgeFindings(analysis_id, findings = []) {
+    if (!Array.isArray(findings) || findings.length === 0) return [];
+    if (isConfigured) {
+      const payloads = findings.map(f => ({
+        analysis_id,
+        finding_type: f.finding_type,
+        title: f.title,
+        description: f.description,
+        status: f.status || null,
+        confidence: f.confidence || 'medium',
+        evidence_references: f.evidence_references || [],
+        review_status: 'needs_review',
+        reviewed_by: null,
+        reviewed_at: null
+      }));
+      const { data, error } = await supabase.from('knowledge_findings').insert(payloads).select();
+      if (error) throw error;
+      return data;
+    }
+    if (!global.mockKnowledgeFindings) global.mockKnowledgeFindings = [];
+    const created = findings.map(f => {
+      const newFinding = {
+        id: crypto.randomUUID(),
+        analysis_id,
+        finding_type: f.finding_type,
+        title: f.title,
+        description: f.description,
+        status: f.status || null,
+        confidence: f.confidence || 'medium',
+        evidence_references: f.evidence_references || [],
+        review_status: 'needs_review',
+        reviewed_by: null,
+        reviewed_at: null,
+        created_at: new Date().toISOString()
+      };
+      global.mockKnowledgeFindings.push(newFinding);
+      return newFinding;
+    });
+    return created;
+  },
+
+  async getKnowledgeFindingsByAnalysis(analysis_id) {
+    if (isConfigured) {
+      const { data, error } = await supabase.from('knowledge_findings').select('*').eq('analysis_id', analysis_id).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+    if (!global.mockKnowledgeFindings) return [];
+    return global.mockKnowledgeFindings.filter(f => f.analysis_id === analysis_id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  },
+
+  async reviewKnowledgeFinding(finding_id, { review_status, reviewed_by, reviewer_notes }) {
+    if (isConfigured) {
+      const payload = { review_status, reviewed_by: reviewed_by || null, reviewed_at: new Date().toISOString(), reviewer_notes: reviewer_notes || null };
+      const { data, error } = await supabase.from('knowledge_findings').update(payload).eq('id', finding_id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    if (!global.mockKnowledgeFindings) return null;
+    const idx = global.mockKnowledgeFindings.findIndex(f => f.id === finding_id);
+    if (idx === -1) return null;
+    const f = global.mockKnowledgeFindings[idx];
+    f.review_status = review_status;
+    f.reviewed_by = reviewed_by || null;
+    f.reviewed_at = new Date().toISOString();
+    f.reviewer_notes = reviewer_notes || null;
+    return f;
+  },
+
+  // ---------------------------------------------------------------------------
+  // HANDOVER PACKAGES & REPLACEMENTS (PHASE 5)
+  // ---------------------------------------------------------------------------
+  async createHandoverPackage({ analysis_id, departing_employee_id, project_id, package_summary, package_content, created_by }) {
+    const validStatuses = ['draft', 'under_review', 'approved', 'assigned', 'in_progress', 'completed', 'rejected'];
+    const initialStatus = 'draft';
+
+    if (isConfigured) {
+      const payload = {
+        analysis_id,
+        departing_employee_id,
+        project_id,
+        status: initialStatus,
+        package_summary: package_summary || null,
+        package_content: package_content || {}
+      };
+      const { data, error } = await supabase.from('handover_packages').insert([payload]).select().single();
+      if (error) throw error;
+
+      // Record initial status history
+      await supabase.from('handover_status_history').insert([{
+        package_id: data.id,
+        status: initialStatus,
+        changed_by: created_by || 'system'
+      }]);
+
+      return data;
+    }
+
+    if (!global.mockHandoverPackages) global.mockHandoverPackages = [];
+    if (!global.mockHandoverStatusHistory) global.mockHandoverStatusHistory = [];
+
+    const newPkg = {
+      id: crypto.randomUUID(),
+      analysis_id,
+      departing_employee_id,
+      project_id,
+      status: initialStatus,
+      package_summary: package_summary || '',
+      package_content: package_content || {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    global.mockHandoverPackages.push(newPkg);
+
+    global.mockHandoverStatusHistory.push({
+      id: crypto.randomUUID(),
+      package_id: newPkg.id,
+      status: initialStatus,
+      changed_by: created_by || 'Manager',
+      changed_at: new Date().toISOString()
+    });
+
+    return newPkg;
+  },
+
+  async listHandoverPackages({ project_id, departing_employee_id, status } = {}) {
+    if (isConfigured) {
+      let query = supabase.from('handover_packages').select(`
+        *,
+        projects ( id, name ),
+        employees:departing_employee_id ( id, full_name, designation, email ),
+        package_assignments ( id, replacement_employee_id, assigned_at )
+      `);
+      if (project_id) query = query.eq('project_id', project_id);
+      if (departing_employee_id) query = query.eq('departing_employee_id', departing_employee_id);
+      if (status) query = query.eq('status', status);
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+
+    if (!global.mockHandoverPackages) global.mockHandoverPackages = [];
+    let list = [...global.mockHandoverPackages];
+    if (project_id) list = list.filter(p => p.project_id === project_id);
+    if (departing_employee_id) list = list.filter(p => p.departing_employee_id === departing_employee_id);
+    if (status) list = list.filter(p => p.status === status);
+
+    return list.map(pkg => {
+      const proj = mockProjects.find(p => p.id === pkg.project_id);
+      const emp = mockEmployees.find(e => e.id === pkg.departing_employee_id);
+      const assignment = (global.mockPackageAssignments || []).find(a => a.package_id === pkg.id);
+      let replacement = null;
+      if (assignment) {
+        const repEmp = mockEmployees.find(e => e.id === assignment.replacement_employee_id);
+        replacement = repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation } : null;
+      }
+      return {
+        ...pkg,
+        projects: proj ? { id: proj.id, name: proj.name } : null,
+        departing_employee: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
+        assignment: assignment ? { ...assignment, replacement_employee: replacement } : null
+      };
+    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  },
+
+  async getHandoverPackageById(id) {
+    if (isConfigured) {
+      const { data, error } = await supabase.from('handover_packages').select(`
+        *,
+        projects ( id, name, description ),
+        employees:departing_employee_id ( id, full_name, designation, email ),
+        package_assignments (
+          id,
+          replacement_employee_id,
+          assigned_at,
+          employees:replacement_employee_id ( id, full_name, designation, email )
+        )
+      `).eq('id', id).single();
+      if (error) throw error;
+      return data;
+    }
+
+    if (!global.mockHandoverPackages) return null;
+    const pkg = global.mockHandoverPackages.find(p => p.id === id);
+    if (!pkg) return null;
+
+    const proj = mockProjects.find(p => p.id === pkg.project_id);
+    const emp = mockEmployees.find(e => e.id === pkg.departing_employee_id);
+    const assignment = (global.mockPackageAssignments || []).find(a => a.package_id === pkg.id);
+    let replacement = null;
+    if (assignment) {
+      const repEmp = mockEmployees.find(e => e.id === assignment.replacement_employee_id);
+      replacement = repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation, email: repEmp.email } : null;
+    }
+
+    return {
+      ...pkg,
+      projects: proj ? { id: proj.id, name: proj.name, description: proj.description } : null,
+      departing_employee: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
+      assignment: assignment ? { ...assignment, replacement_employee: replacement } : null
+    };
+  },
+
+  async updateHandoverPackageStatus(package_id, newStatus, changed_by) {
+    const validStatuses = ['draft', 'under_review', 'approved', 'assigned', 'in_progress', 'completed', 'rejected'];
+    if (!validStatuses.includes(newStatus)) {
+      const err = new Error(`Invalid status: ${newStatus}. Allowed: ${validStatuses.join(', ')}`);
+      err.code = 'INVALID_STATUS';
+      throw err;
+    }
+
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('handover_packages')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', package_id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      await supabase.from('handover_status_history').insert([{
+        package_id,
+        status: newStatus,
+        changed_by: changed_by || 'Manager'
+      }]);
+
+      return data;
+    }
+
+    if (!global.mockHandoverPackages) return null;
+    const pkg = global.mockHandoverPackages.find(p => p.id === package_id);
+    if (!pkg) return null;
+
+    pkg.status = newStatus;
+    pkg.updated_at = new Date().toISOString();
+
+    if (!global.mockHandoverStatusHistory) global.mockHandoverStatusHistory = [];
+    global.mockHandoverStatusHistory.push({
+      id: crypto.randomUUID(),
+      package_id,
+      status: newStatus,
+      changed_by: changed_by || 'Manager',
+      changed_at: new Date().toISOString()
+    });
+
+    return pkg;
+  },
+
+  async assignReplacementEmployee(package_id, replacement_employee_id) {
+    if (isConfigured) {
+      // Check if assignment exists
+      const { data: existing } = await supabase
+        .from('package_assignments')
+        .select('*')
+        .eq('package_id', package_id)
+        .maybeSingle();
+
+      if (existing) {
+        const err = new Error('Handover package is already assigned to a replacement employee.');
+        err.code = 'DUPLICATE_ASSIGNMENT';
+        throw err;
+      }
+
+      const { data, error } = await supabase
+        .from('package_assignments')
+        .insert([{ package_id, replacement_employee_id }])
+        .select(`
+          *,
+          employees:replacement_employee_id ( id, full_name, designation, email )
+        `)
+        .single();
+      if (error) throw error;
+
+      // Update package status to assigned
+      await this.updateHandoverPackageStatus(package_id, 'assigned', 'Manager');
+      return data;
+    }
+
+    if (!global.mockPackageAssignments) global.mockPackageAssignments = [];
+    const existing = global.mockPackageAssignments.find(a => a.package_id === package_id);
+    if (existing) {
+      const err = new Error('Handover package is already assigned to a replacement employee.');
+      err.code = 'DUPLICATE_ASSIGNMENT';
+      throw err;
+    }
+
+    const assignment = {
+      id: crypto.randomUUID(),
+      package_id,
+      replacement_employee_id,
+      assigned_at: new Date().toISOString()
+    };
+    global.mockPackageAssignments.push(assignment);
+
+    await this.updateHandoverPackageStatus(package_id, 'assigned', 'Manager');
+
+    const repEmp = mockEmployees.find(e => e.id === replacement_employee_id);
+    return {
+      ...assignment,
+      employees: repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation, email: repEmp.email } : null
+    };
+  },
+
+  async getHandoverStatusHistory(package_id) {
+    if (isConfigured) {
+      const { data, error } = await supabase
+        .from('handover_status_history')
+        .select('*')
+        .eq('package_id', package_id)
+        .order('changed_at', { ascending: true });
+      if (error) throw error;
+      return data;
+    }
+
+    if (!global.mockHandoverStatusHistory) return [];
+    return global.mockHandoverStatusHistory
+      .filter(h => h.package_id === package_id)
+      .sort((a, b) => new Date(a.changed_at) - new Date(b.changed_at));
   }
 };
+
+export const repository = db;
+export default db;

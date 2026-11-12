@@ -10,8 +10,8 @@ export const config = {
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   },
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY || ''
+    apiKey: process.env.GEMINI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173'
 };
-

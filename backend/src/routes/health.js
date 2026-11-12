@@ -9,14 +9,14 @@ router.get('/', (req, res) => {
     product: 'HandoverIQ',
     team: 'ROGUENOVA',
     tagline: 'Preserve Knowledge. Power Continuity.',
-    version: '1.0.0-phase1',
+    version: '1.5.0-phase5',
     timestamp: new Date().toISOString(),
     services: {
       api: 'healthy',
       database: isConfigured ? 'connected' : 'pending_configuration',
       geminiAI: process.env.GEMINI_API_KEY ? 'ready' : 'pending_configuration'
     },
-    phase: 'PHASE 1 - Foundation & Dashboard'
+    phase: 'PHASE 5 - Handover Package, Manager Review & Replacement Briefing'
   });
 });
 

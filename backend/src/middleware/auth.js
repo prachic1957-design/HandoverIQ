@@ -1,20 +1,12 @@
-/**
- * HandoverIQ Authentication & Access Control Middleware
- * Team: ROGUENOVA
- * 
- * Enforces role-based access control (RBAC) on confidential employee records.
- * Sensitive fields (such as 'salary') are strictly isolated to authorized HR roles
- * and are NEVER returned to standard employee or manager queries.
- */
+// HandoverIQ Authentication & Access Control Middleware
+// Team: ROGUENOVA
+// Enforces RBAC for confidential fields (e.g., salary). HR role required for sensitive data.
 
 export function authenticate(req, res, next) {
-  // Check role header or authorization claim
   const roleHeader = req.headers['x-user-role']?.toLowerCase();
   const authHeader = req.headers['authorization'];
 
-  // Check if role is explicitly authorized as HR
-  let userRole = 'employee';
-
+  let userRole = 'employee'; // default
   if (roleHeader === 'hr' || roleHeader === 'admin') {
     userRole = 'hr';
   } else if (authHeader && authHeader.includes('role=hr')) {
@@ -23,9 +15,11 @@ export function authenticate(req, res, next) {
 
   req.userRole = userRole;
   req.isHR = userRole === 'hr';
-
   next();
 }
+
+// Export a convenient middleware name used throughout the app
+export const isAuthenticated = authenticate;
 
 /**
  * Middleware requiring HR privileges to perform sensitive operations
@@ -39,4 +33,3 @@ export function requireHR(req, res, next) {
   }
   next();
 }
-

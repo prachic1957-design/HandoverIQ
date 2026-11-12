@@ -58,3 +58,4 @@ fs.writeFileSync(path.join(outDir, 'test_scanned_empty.pdf'), scannedPdf);
 fs.writeFileSync(path.join(outDir, 'test_unsupported.exe'), Buffer.from('MZ...fake executable content'));
 
 console.log('Sample test documents created successfully in:', outDir);
+

@@ -1,0 +1,18 @@
+{
+  "name": "handoveriq",
+  "version": "1.0.0",
+  "description": "HandoverIQ - AI-Powered Employee Knowledge Handover & Replacement Management System by Team ROGUENOVA",
+  "scripts": {
+    "dev:backend": "node backend/src/server.js",
+    "dev:frontend": "node frontend/node_modules/vite/bin/vite.js frontend",
+    "start": "node backend/src/server.js"
+  },
+  "keywords": [
+    "handoveriq",
+    "roguenova",
+    "ai-handover",
+    "knowledge-management"
+  ],
+  "author": "ROGUENOVA",
+  "license": "ISC"
+}

@@ -56,3 +56,4 @@ export default function Header({ activeTab, backendStatus, onRefreshStatus, chec
     </header>
   );
 }
+

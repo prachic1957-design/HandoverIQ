@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
+import DepartmentsView from './components/DepartmentsView';
+import EmployeesView from './components/EmployeesView';
+import ProjectsView from './components/ProjectsView';
 import ModulePlaceholder from './components/ModulePlaceholder';
 
 export default function App() {
@@ -35,6 +38,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <DashboardOverview backendStatus={backendStatus} onNavigate={(tab) => setActiveTab(tab)} />;
+      case 'departments':
+        return <DepartmentsView />;
+      case 'employees':
+        return <EmployeesView />;
+      case 'projects':
+        return <ProjectsView />;
+      default:
+        return <ModulePlaceholder moduleId={activeTab} />;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#0B1020] text-slate-100 overflow-hidden font-sans">
       {/* Sidebar Navigation */}
@@ -53,14 +71,7 @@ export default function App() {
         {/* Scrollable Main Viewport */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' ? (
-              <DashboardOverview
-                backendStatus={backendStatus}
-                onNavigate={(tab) => setActiveTab(tab)}
-              />
-            ) : (
-              <ModulePlaceholder moduleId={activeTab} />
-            )}
+            {renderContent()}
           </div>
         </main>
       </div>

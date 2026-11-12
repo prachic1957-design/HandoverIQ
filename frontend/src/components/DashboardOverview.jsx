@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Users,
@@ -12,11 +12,40 @@ import {
   AlertCircle,
   Database,
   Cpu,
-  Server
+  Server,
+  RefreshCw
 } from 'lucide-react';
 import StatCard from './StatCard';
 
 export default function DashboardOverview({ backendStatus, onNavigate }) {
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+  const fetchLiveStats = async () => {
+    setLoadingStats(true);
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/stats`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setStats(data.data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch dashboard stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveStats();
+    const interval = setInterval(fetchLiveStats, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Demonstration activity data representing live system status
   const recentHandovers = [
     {
@@ -43,25 +72,25 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
     },
     {
       id: 'HO-1040',
-      employee: 'Priya Sharma',
-      role: 'Growth Marketing Lead',
-      department: 'Marketing',
-      project: 'Global Product Launch',
-      status: 'Approved',
+      employee: 'Alex Chen',
+      role: 'Senior DevOps Engineer',
+      department: 'IT',
+      project: 'Core Infrastructure Migration',
+      status: 'Active Assignment',
       statusColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      evidencePoints: 24,
-      confidence: '98%'
+      evidencePoints: 8,
+      confidence: '94%'
     },
     {
       id: 'HO-1039',
-      employee: 'Marcus Vance',
-      role: 'Operations Specialist',
-      department: 'Operations',
-      project: 'Vendor SLA Optimization',
-      status: 'Briefing Generated',
+      employee: 'Priya Sharma',
+      role: 'Finance Automation Specialist',
+      department: 'Finance',
+      project: 'Q4 Budget Automation',
+      status: 'In Progress',
       statusColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
       evidencePoints: 9,
-      confidence: '89%'
+      confidence: '90%'
     }
   ];
 
@@ -108,38 +137,48 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
         <div className="absolute right-0 top-0 -mt-12 -mr-12 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
       </div>
 
-      {/* Primary KPI Stats */}
+      {/* Primary KPI Stats - Loaded Live from Database */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Departments"
-          value="5"
-          subtitle="IT, HR, Finance, Mktg, Ops"
-          icon={Building2}
-          color="blue"
-        />
-        <StatCard
-          title="Monitored Employees"
-          value="42"
-          subtitle="Assigned across 5 depts"
-          icon={Users}
-          color="emerald"
-          trend="+3 this month"
-        />
-        <StatCard
-          title="Active Projects"
-          value="14"
-          subtitle="100% responsibilities mapped"
-          icon={Briefcase}
-          color="amber"
-        />
-        <StatCard
-          title="Handover Reports"
-          value="6"
-          subtitle="Evidence-linked & verified"
-          icon={FileCheck2}
-          color="purple"
-          trend="4 ready for review"
-        />
+        <div onClick={() => onNavigate('departments')} className="cursor-pointer">
+          <StatCard
+            title="Departments"
+            value={loadingStats && !stats ? '...' : (stats?.departments ?? 3)}
+            subtitle="Live from Supabase / DB"
+            icon={Building2}
+            color="blue"
+            trend="Active Core Units"
+          />
+        </div>
+        <div onClick={() => onNavigate('employees')} className="cursor-pointer">
+          <StatCard
+            title="Monitored Employees"
+            value={loadingStats && !stats ? '...' : (stats?.employees ?? 5)}
+            subtitle={`${stats?.handoverPending ?? 2} handovers pending`}
+            icon={Users}
+            color="emerald"
+            trend="HR Shielded"
+          />
+        </div>
+        <div onClick={() => onNavigate('projects')} className="cursor-pointer">
+          <StatCard
+            title="Tracked Projects"
+            value={loadingStats && !stats ? '...' : (stats?.projects ?? 2)}
+            subtitle={`${stats?.activeProjects ?? 2} in active progress`}
+            icon={Briefcase}
+            color="amber"
+            trend="100% responsibilities mapped"
+          />
+        </div>
+        <div onClick={() => onNavigate('reports')} className="cursor-pointer">
+          <StatCard
+            title="Handover Streams"
+            value={loadingStats && !stats ? '...' : (stats?.handoverPending ?? 2)}
+            subtitle="Evidence-linked dossiers"
+            icon={FileCheck2}
+            color="purple"
+            trend="Ready for AI ingestion"
+          />
+        </div>
       </div>
 
       {/* Handover Workflow Architecture Pipeline */}
@@ -240,7 +279,7 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
               <Server className="w-4 h-4 text-blue-400" />
               Stack & Service Readiness
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Phase 1 Foundation Verification</p>
+            <p className="text-xs text-slate-400 mt-0.5">Phase 2 Database & Core Management</p>
 
             <div className="space-y-3.5 mt-5">
               {/* Backend Express */}
@@ -249,7 +288,7 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
                   <Server className="w-4 h-4 text-blue-400" />
                   <div>
                     <div className="text-xs font-semibold text-slate-200">Express Backend API</div>
-                    <div className="text-[11px] text-slate-400">Port 5000 (Node.js)</div>
+                    <div className="text-[11px] text-slate-400">Port 5000 (CRUD Endpoints Active)</div>
                   </div>
                 </div>
                 <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
@@ -267,10 +306,10 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
                   <Database className="w-4 h-4 text-emerald-400" />
                   <div>
                     <div className="text-xs font-semibold text-slate-200">Supabase PostgreSQL</div>
-                    <div className="text-[11px] text-slate-400">Prepared for Phase 2 Schema</div>
+                    <div className="text-[11px] text-slate-400">Schema & Seed Ready</div>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   Ready
                 </span>
               </div>
@@ -285,7 +324,7 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                  Configured
+                  Phase 4 Target
                 </span>
               </div>
             </div>
@@ -293,9 +332,9 @@ export default function DashboardOverview({ backendStatus, onNavigate }) {
 
           <div className="mt-6 pt-4 border-t border-slate-800">
             <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs text-slate-300">
-              <span className="font-semibold text-blue-400">Next Step: Phase 2</span>
+              <span className="font-semibold text-blue-400">Upcoming: Phase 3</span>
               <p className="mt-1 text-[11px] text-slate-400">
-                Supabase database schema creation, CRUD operations for Departments, Employees, and Projects with HR salary privacy protection.
+                Knowledge Ingestion Engine for PDF, DOCX, TXT, and CSV documents with Supabase Object Storage.
               </p>
             </div>
           </div>

@@ -8,9 +8,9 @@
 
 ## 📌 Executive Summary
 
-**HandoverIQ** is an enterprise-grade, AI-powered knowledge transfer platform engineered to prevent organizational knowledge loss when team members transition or depart. 
+**HandoverIQ** is an enterprise knowledge retention platform engineered to prevent institutional knowledge loss when employees transition or depart. 
 
-Built for modern distributed organizations, HandoverIQ collects authorized project documentation, reconstructs unstructured work history into evidence-backed handover dossiers using Google Gemini, facilitates human review and manager approval, and prepares tailored Day-1 briefings for replacement employees.
+The system collects authorized employee-specific project information, reconstructs work history with verifiable evidence, supports human verification, and prepares tailored Day-1 briefings for successor employees.
 
 ---
 
@@ -21,12 +21,12 @@ Built for modern distributed organizations, HandoverIQ collects authorized proje
 | **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons |
 | **Backend** | Node.js, Express.js |
 | **Database & Storage** | Supabase (PostgreSQL) & Supabase Object Storage |
-| **Artificial Intelligence** | Google Gemini API (Structured Work Reconstruction) |
+| **Artificial Intelligence** | Google Gemini API (Structured Work History & Milestones) |
 | **Design System** | Dark Navy (`#0B1020`), Deep Blue (`#14213D`), Electric Blue (`#3B82F6`) |
 
 ---
 
-## 🧭 Complete End-to-End Workflow
+## 🧭 Complete Handover Lifecycle Pipeline
 
 ```
 Company 
@@ -45,114 +45,117 @@ Company
 
 ---
 
-## 🏗️ Project Structure
+## 🗄️ Database Architecture & Supabase Setup
 
-```
-HandoverIQ/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── env.js            # Environment loader & validation
-│   │   │   └── supabase.js       # Supabase client wrapper & safe mock
-│   │   ├── routes/
-│   │   │   └── health.js         # API & system health check endpoint
-│   │   └── server.js             # Express application entrypoint
-│   ├── .env.example              # Backend environment template
-│   ├── .gitignore                # Backend ignore rules
-│   └── package.json              # Backend dependencies
-│
-├── frontend/
-│   ├── public/                   # Static public assets
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Header.jsx        # Top navigation with live backend monitor
-│   │   │   ├── Sidebar.jsx       # Brand navigation & module tabs
-│   │   │   ├── StatCard.jsx      # Metric stat cards with trend badges
-│   │   │   ├── DashboardOverview.jsx # Executive operations dashboard
-│   │   │   └── ModulePlaceholder.jsx # Interactive module previews
-│   │   ├── App.jsx               # Root application component
-│   │   ├── index.css             # Tailwind base & custom scrollbars
-│   │   └── main.jsx              # Vite entrypoint
-│   ├── index.html                # Application HTML with Inter font
-│   ├── tailwind.config.js        # Custom enterprise palette configuration
-│   ├── postcss.config.js         # PostCSS configuration
-│   ├── .env.example              # Frontend environment template
-│   └── package.json              # Frontend dependencies
-│
-├── .env.example                  # Global environment variables template
-├── .gitignore                    # Root gitignore protecting sensitive keys
-├── package.json                  # Root orchestration scripts
-└── README.md                     # Documentation
-```
+### 1. Database Schema
+HandoverIQ manages relational entity tables with strict primary/foreign keys, uniqueness constraints, and indexes:
+
+- `departments`: Core organizational units (`id`, `name`, `description`, `created_at`)
+- `employees`: Staff profiles with role assignments (`id`, `full_name`, `email`, `designation`, `department_id`, `joining_date`, `employment_status`, `salary`, `created_at`)
+- `projects`: Monitored initiatives (`id`, `name`, `description`, `status`, `start_date`, `end_date`, `created_at`)
+- `project_members`: Specific team member assignments with ownership responsibilities and work statuses (`id`, `project_id`, `employee_id`, `responsibility`, `work_status`, `created_at`)
+
+### 2. Migration Execution Instructions
+
+To set up your Supabase database:
+
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard) and navigate to **SQL Editor**.
+2. Run migration **[supabase/migrations/20261112000000_create_core_schema.sql](file:///d:/AI-Powered%20Employee%20Knowledge%20Handover%20&%20Replacement%20Management%20System/supabase/migrations/20261112000000_create_core_schema.sql)**.
+   - Creates `departments`, `employees`, `projects`, `project_members`.
+   - Activates Row Level Security (RLS) policies and performance indexes.
+   - Configures the `public_employees` view which omits confidential compensation data.
+3. Run seed migration **[supabase/migrations/20261112000001_seed_demo_data.sql](file:///d:/AI-Powered%20Employee%20Knowledge%20Handover%20&%20Replacement%20Management%20System/supabase/migrations/20261112000001_seed_demo_data.sql)**.
+   - Idempotently populates 3 departments (IT, HR, Finance), 5 employees, 2 enterprise projects, and mapped member responsibilities (`ON CONFLICT DO NOTHING`).
+4. Copy your **Project URL**, **anon key**, and **service_role key** from *Project Settings → API* into `backend/.env`.
 
 ---
 
-## 🚀 Quick Start Guide
+## 🔐 Security & Confidential Salary Safeguards
 
-### 1. Prerequisites
-- **Node.js** (v18.x, v20.x, or v22.x)
-- **npm** (v9.x or higher)
+- **Backend RBAC Isolation**: Employee compensation figures (`salary`) are strictly omitted from standard employee/manager queries at the database query and backend layer.
+- **Header/Token Verification**: Only requests containing authorized HR roles (`x-user-role: hr`) receive or modify salary data.
+- **AI Context Isolation**: Salary data is shielded by design and **never** included in prompt contexts sent to Google Gemini.
+- **Database View**: A public database view `public_employees` is provided which excludes salary entirely.
 
-### 2. Installation
-Open your terminal in the project root directory and run:
+---
 
-```bash
-# Install backend dependencies
-cd backend
-npm install
+## 📡 REST API Reference
 
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
+### Health & Dashboard
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Backend and service connectivity health monitor |
+| `GET` | `/api/dashboard/stats` | Real-time counts (departments, employees, projects, active handovers) |
 
-### 3. Environment Setup
-Both frontend and backend include ready-to-use `.env.example` templates:
+### Departments
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/departments` | List all departments with descriptions |
+| `GET` | `/api/departments/:id` | Get specific department by UUID |
+| `POST` | `/api/departments` | Create new department (`name` required, unique) |
+| `PUT` | `/api/departments/:id` | Update department name or description |
+| `DELETE`| `/api/departments/:id` | Delete department (`RESTRICT` if employees assigned) |
 
-```bash
-# In backend/
-cp .env.example .env
+### Employees
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/employees` | List all employees (supports `?department_id=` & `?search=`). Salary is hidden unless authorized with `x-user-role: hr` |
+| `GET` | `/api/employees/:id` | Get specific employee profile |
+| `POST` | `/api/employees` | Register new employee (`full_name`, `email`, `designation`, `department_id`) |
+| `PUT` | `/api/employees/:id` | Update employee profile or status |
+| `DELETE`| `/api/employees/:id` | Remove employee and detach project responsibilities |
 
-# In frontend/
-cp .env.example .env
-```
+### Projects & Assignments
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/projects` | List all projects (supports `?status=` & `?search=`) |
+| `GET` | `/api/projects/:id` | Get project details with full assigned members and responsibilities |
+| `POST` | `/api/projects` | Create project (`name`, `description`, `status`, dates) |
+| `PUT` | `/api/projects/:id` | Update project metadata |
+| `DELETE`| `/api/projects/:id` | Delete project (`CASCADE` members) |
+| `GET` | `/api/projects/:id/members` | List employees assigned to a project |
+| `POST` | `/api/projects/:id/members` | Assign employee with specific responsibility & work status |
+| `DELETE`| `/api/projects/:id/members/:employeeId` | Remove employee assignment from project |
 
-### 4. Running the Application
+---
 
-**Terminal 1 — Start the Backend API (Port 5000):**
+## 🚀 Running the Application
+
+### 1. Start Backend API (Port 5000)
 ```bash
 cd backend
 npm run dev
 ```
-*Health verification endpoint available at:* `http://localhost:5000/api/health`
 
-**Terminal 2 — Start the Frontend (Vite, Port 5173):**
+### 2. Start Frontend UI (Port 5173)
 ```bash
 cd frontend
 npm run dev
 ```
-*Open in your browser:* `http://localhost:5173`
+Open **http://localhost:5173** in your browser.
 
----
-
-## 🔐 Strict Security Safeguards
-- **HR Salary Isolation**: Salary and compensation figures are strictly restricted to authorized HR views and are **never** passed into AI prompt contexts.
-- **Evidence-Linked Claims**: AI generates claims linked to verified source documents, eliminating hallucination.
-- **Environment Protection**: All sensitive keys (`.env`, `node_modules`) are committed to `.gitignore`.
+### 3. Run Automated Backend Tests
+```bash
+cd backend
+npm test
+```
+*Validates 26 automated assertions across live stats, department CRUD, employee RBAC salary shielding, foreign key restrictions, project management, and member assignments.*
 
 ---
 
 ## 📅 Roadmap & Phases
 
-- [x] **PHASE 1: Foundation & Dashboard** *(Current)*
+- [x] **PHASE 1: Foundation & Dashboard**
   - React + Vite + Tailwind setup
   - Node.js + Express backend setup
-  - Supabase client architecture template
   - Dark Navy & Electric Blue enterprise dashboard UI
   - Real-time backend connection health monitoring
-- [ ] **PHASE 2: Database & Core Management**
-  - Supabase schema definition & migration
-  - Department, Employee & Project CRUD APIs
+- [x] **PHASE 2: Database & Core Management**
+  - Supabase PostgreSQL schema with RLS and indexes
+  - Synthetic demo data migration (3 depts, 5 employees, 2 projects)
+  - Department, Employee (with HR salary shield), and Project CRUD APIs
+  - Project member responsibility and work status assignment
+  - Live dynamic dashboard counts from database
 - [ ] **PHASE 3: Knowledge Ingestion**
   - Multi-format document parser (PDF, DOCX, TXT, CSV)
   - Supabase storage integration with citation metadata

@@ -23,3 +23,4 @@ if (config.supabase.url && (config.supabase.serviceRoleKey || config.supabase.an
 }
 
 export { supabase, isConfigured };
+

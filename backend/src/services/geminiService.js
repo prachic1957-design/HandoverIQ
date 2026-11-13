@@ -388,51 +388,84 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
     projectChunks
   });
 
-  try {
-    const ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
-
-    // Call Gemini API with timeout handling
-    const responsePromise = ai.models.generateContent({
-      model: modelName,
-      contents: promptContent,
-      config: {
-        systemInstruction: systemInstructions,
-        responseMimeType: 'application/json',
-        temperature: 0.1 // Low temperature to maximize factual accuracy and citation fidelity
-      }
-    });
-
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Gemini API call timed out after 45 seconds')), 45000);
-    });
-
-    const result = await Promise.race([responsePromise, timeoutPromise]);
-    const textOutput = result.text ? result.text.trim() : '';
-
-    if (!textOutput) {
-      throw new Error('Gemini API returned an empty response.');
-    }
-
-    // Strip markdown code fences if model returned them
-    const cleanJson = textOutput.replace(/^```json\s*|\s*```$/g, '').trim();
-    const rawParsed = JSON.parse(cleanJson);
-
-    // Validate and sanitize against hallucinated citations
-    const validated = validateAndSanitizeFindings(rawParsed, validChunkMap);
-
-    return {
-      model_name: modelName,
-      analysis_summary: validated.summary,
-      structured_result: validated,
-      total_chunks_analyzed: allChunks.length
-    };
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      const parseErr = new Error(`Failed to parse structured JSON from Gemini response: ${err.message}`);
-      parseErr.code = 'INVALID_AI_JSON';
-      throw parseErr;
-    }
-    throw err;
+  const candidateModels = [modelName];
+  if (modelName === 'gemini-3.8-flash') {
+    // If primary model experiences transient capacity spikes (503), failover to available stable models
+    candidateModels.push('gemini-3.5-flash', 'gemini-3.1-flash-lite');
   }
+
+  const ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+  let lastError = null;
+
+  for (const currentModel of candidateModels) {
+    const maxAttempts = candidateModels.length > 1 ? 1 : 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const perAttemptTimeoutMs = 30000;
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, perAttemptTimeoutMs);
+
+      try {
+        console.log(`[HandoverIQ Gemini Engine] Generating knowledge reconstruction with ${currentModel} (attempt ${attempt})...`);
+        const response = await ai.models.generateContent({
+          model: currentModel,
+          contents: promptContent,
+          config: {
+            systemInstruction: systemInstructions,
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+            abortSignal: controller.signal,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        const textOutput = response.text ? response.text.trim() : '';
+        if (!textOutput) {
+          throw new Error(`Gemini API returned an empty response with ${currentModel}.`);
+        }
+
+        // Strip markdown code fences if model returned them
+        const cleanJson = textOutput.replace(/^```json\s*|\s*```$/g, '').trim();
+        const rawParsed = JSON.parse(cleanJson);
+
+        // Validate and sanitize against hallucinated citations
+        const validated = validateAndSanitizeFindings(rawParsed, validChunkMap);
+
+        return {
+          model_name: currentModel,
+          analysis_summary: validated.summary,
+          structured_result: validated,
+          total_chunks_analyzed: allChunks.length
+        };
+      } catch (err) {
+        clearTimeout(timeoutId);
+        const isAbort = err.name === 'AbortError' || err.message?.includes('aborted');
+        const is503 = err.status === 503 || err.message?.includes('503') || err.message?.includes('high demand') || err.message?.includes('UNAVAILABLE');
+        const is429 = err.status === 429 || err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED');
+
+        lastError = isAbort
+          ? new Error(`Gemini API call to ${currentModel} timed out after ${Math.round(perAttemptTimeoutMs / 1000)} seconds`)
+          : err;
+
+        console.warn(`[HandoverIQ Gemini Engine] ${currentModel} attempt ${attempt} failed: ${lastError.message}`);
+
+        if (attempt < maxAttempts && (isAbort || is503 || is429)) {
+          await new Promise(res => setTimeout(res, 1500));
+        } else {
+          break; // proceed to next candidate model
+        }
+      }
+    }
+  }
+
+  if (lastError instanceof SyntaxError) {
+    const parseErr = new Error(`Failed to parse structured JSON from Gemini response: ${lastError.message}`);
+    parseErr.code = 'INVALID_AI_JSON';
+    throw parseErr;
+  }
+  throw lastError;
 }
 

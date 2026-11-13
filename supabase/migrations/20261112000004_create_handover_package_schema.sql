@@ -7,7 +7,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Hand‑over Packages table
+-- 1. Handover Packages table
 CREATE TABLE IF NOT EXISTS handover_packages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     analysis_id UUID NOT NULL REFERENCES knowledge_analyses(id) ON DELETE CASCADE,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS handover_status_history (
     changed_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 3. Replacement assignment (one‑to‑one optional)
+-- 3. Replacement assignment (one-to-one optional)
 CREATE TABLE IF NOT EXISTS package_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     package_id UUID NOT NULL REFERENCES handover_packages(id) ON DELETE CASCADE,
@@ -44,21 +44,39 @@ CREATE INDEX IF NOT EXISTS idx_handover_packages_emp ON handover_packages(depart
 CREATE INDEX IF NOT EXISTS idx_handover_status_hist_pkg ON handover_status_history(package_id);
 CREATE INDEX IF NOT EXISTS idx_pkg_assignments_pkg ON package_assignments(package_id);
 
--- Row Level Security (demo only)
+-- Row Level Security Activation
 ALTER TABLE handover_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE handover_status_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE package_assignments ENABLE ROW LEVEL SECURITY;
 
--- Demo policies – replace with production policies later
-CREATE POLICY "Allow read access on handover_packages" ON handover_packages FOR SELECT USING (true);
-CREATE POLICY "Allow write access on handover_packages" ON handover_packages FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow read access on handover_status_history" ON handover_status_history FOR SELECT USING (true);
-CREATE POLICY "Allow write access on handover_status_history" ON handover_status_history FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow read access on package_assignments" ON package_assignments FOR SELECT USING (true);
-CREATE POLICY "Allow write access on package_assignments" ON package_assignments FOR ALL USING (true) WITH CHECK (true);
+-- RLS Policies: Backend-Only Access via service_role
+-- Explicitly revoke broad public and ordinary user access. Only backend SUPABASE_SERVICE_ROLE_KEY has access.
+DROP POLICY IF EXISTS "Allow read access on handover_packages" ON handover_packages;
+DROP POLICY IF EXISTS "Allow write access on handover_packages" ON handover_packages;
+DROP POLICY IF EXISTS "Allow read access on handover_status_history" ON handover_status_history;
+DROP POLICY IF EXISTS "Allow write access on handover_status_history" ON handover_status_history;
+DROP POLICY IF EXISTS "Allow read access on package_assignments" ON package_assignments;
+DROP POLICY IF EXISTS "Allow write access on package_assignments" ON package_assignments;
+DROP POLICY IF EXISTS "Allow service_role full access on handover_packages" ON handover_packages;
+DROP POLICY IF EXISTS "Allow service_role full access on handover_status_history" ON handover_status_history;
+DROP POLICY IF EXISTS "Allow service_role full access on package_assignments" ON package_assignments;
+
+CREATE POLICY "Allow service_role full access on handover_packages" ON handover_packages
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow service_role full access on handover_status_history" ON handover_status_history
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow service_role full access on package_assignments" ON package_assignments
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
 -- Documentation
-COMMENT ON TABLE handover_packages IS 'HandoverIQ: Manager‑reviewed handover package linking AI analysis to replacement workflow';
+COMMENT ON TABLE handover_packages IS 'HandoverIQ: Manager-reviewed handover package linking AI analysis to replacement workflow';
 COMMENT ON TABLE handover_status_history IS 'HandoverIQ: Audit trail of handover package status changes';
 COMMENT ON TABLE package_assignments IS 'HandoverIQ: Assignment of replacement employee to a handover package';
-

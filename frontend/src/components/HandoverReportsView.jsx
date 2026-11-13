@@ -163,6 +163,10 @@ export default function HandoverReportsView() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Assignment failed');
 
+      if (!data.assignment?.replacement_employee && !data.assignment?.employees) {
+        console.warn('[HandoverIQ] Assignment response missing nested replacement_employee:', data);
+      }
+
       setSuccessMsg(data.message || 'Replacement employee assigned successfully.');
       setSelectedReplacementId('');
       await fetchPackages();

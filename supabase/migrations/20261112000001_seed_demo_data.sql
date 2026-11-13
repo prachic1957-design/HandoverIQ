@@ -72,7 +72,7 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO projects (id, name, description, status, start_date, end_date)
 VALUES 
     (
-        'p1111111-1111-1111-1111-111111111111', 
+        '11111111-1111-1111-1111-111111111111', 
         'Core Infrastructure Migration', 
         'Migration of legacy monolithic services to Kubernetes cluster with automated zero-downtime deployment pipelines.', 
         'in_progress', 
@@ -80,7 +80,7 @@ VALUES
         '2026-06-30'
     ),
     (
-        'p2222222-2222-2222-2222-222222222222', 
+        '22222222-2222-2222-2222-222222222222', 
         'Q4 Budget Automation', 
         'Implementation of automated reconciliation and multi-currency reporting pipelines for enterprise finance.', 
         'in_progress', 
@@ -94,32 +94,32 @@ INSERT INTO project_members (id, project_id, employee_id, responsibility, work_s
 VALUES 
     -- Sarah Jenkins on Core Infrastructure Migration
     (
-        'm1111111-1111-1111-1111-111111111111',
-        'p1111111-1111-1111-1111-111111111111',
+        'ba111111-1111-1111-1111-111111111111',
+        '11111111-1111-1111-1111-111111111111',
         'e1111111-1111-1111-1111-111111111111',
         'Lead architect for VPC peering, Kubernetes cluster provisioning, and security compliance policies.',
         'completed'
     ),
     -- Alex Chen on Core Infrastructure Migration
     (
-        'm2222222-2222-2222-2222-222222222222',
-        'p1111111-1111-1111-1111-111111111111',
+        'ba222222-2222-2222-2222-222222222222',
+        '11111111-1111-1111-1111-111111111111',
         'e2222222-2222-2222-2222-222222222222',
         'Implementation of GitHub Actions CI/CD pipelines and Helm chart deployment configurations.',
         'in_progress'
     ),
     -- David Miller on Q4 Budget Automation
     (
-        'm3333333-3333-3333-3333-333333333333',
-        'p2222222-2222-2222-2222-222222222222',
+        'ba333333-3333-3333-3333-333333333333',
+        '22222222-2222-2222-2222-222222222222',
         'e4444444-4444-4444-4444-444444444444',
         'Financial logic validation, currency fluctuation modeling, and variance report generation.',
         'in_progress'
     ),
     -- Priya Sharma on Q4 Budget Automation
     (
-        'm4444444-4444-4444-4444-444444444444',
-        'p2222222-2222-2222-2222-222222222222',
+        'ba444444-4444-4444-4444-444444444444',
+        '22222222-2222-2222-2222-222222222222',
         'e5555555-5555-5555-5555-555555555555',
         'ETL script pipeline to ingest raw bank CSV statements and reconcile general ledger entries.',
         'completed'

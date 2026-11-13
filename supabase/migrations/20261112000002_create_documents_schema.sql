@@ -10,18 +10,18 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('handover-documents', 'handover-documents', false)
 ON CONFLICT (id) DO UPDATE SET public = false;
 
--- 2. Storage Bucket Security Policies (Restrict direct public access)
-CREATE POLICY "Allow authenticated reads on handover-documents" ON storage.objects
-    FOR SELECT TO authenticated
-    USING (bucket_id = 'handover-documents');
+-- 2. Storage Bucket Security Policies (Backend-Only Access via service_role)
+-- Disallow public and ordinary authenticated access; backend SUPABASE_SERVICE_ROLE_KEY bypasses RLS safely.
+-- Drop any legacy permissive policies if re-running
+DROP POLICY IF EXISTS "Allow authenticated reads on handover-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated uploads on handover-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated deletes on handover-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow service_role full access on handover-documents" ON storage.objects;
 
-CREATE POLICY "Allow authenticated uploads on handover-documents" ON storage.objects
-    FOR INSERT TO authenticated
+CREATE POLICY "Allow service_role full access on handover-documents" ON storage.objects
+    FOR ALL TO service_role
+    USING (bucket_id = 'handover-documents')
     WITH CHECK (bucket_id = 'handover-documents');
-
-CREATE POLICY "Allow authenticated deletes on handover-documents" ON storage.objects
-    FOR DELETE TO authenticated
-    USING (bucket_id = 'handover-documents');
 
 -- 3. Documents Metadata Table
 CREATE TABLE IF NOT EXISTS documents (
@@ -64,18 +64,24 @@ CREATE INDEX IF NOT EXISTS idx_document_chunks_page ON document_chunks(page_numb
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
 
--- 7. RLS Policies
-CREATE POLICY "Allow read access on documents" ON documents
-    FOR SELECT USING (true);
+-- 7. RLS Policies: Backend-Only Access via service_role
+-- Explicitly revoke public and ordinary user access. Only backend SUPABASE_SERVICE_ROLE_KEY has access.
+DROP POLICY IF EXISTS "Allow read access on documents" ON documents;
+DROP POLICY IF EXISTS "Allow write access on documents" ON documents;
+DROP POLICY IF EXISTS "Allow read access on document_chunks" ON document_chunks;
+DROP POLICY IF EXISTS "Allow write access on document_chunks" ON document_chunks;
+DROP POLICY IF EXISTS "Allow service_role full access on documents" ON documents;
+DROP POLICY IF EXISTS "Allow service_role full access on document_chunks" ON document_chunks;
 
-CREATE POLICY "Allow write access on documents" ON documents
-    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow service_role full access on documents" ON documents
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
-CREATE POLICY "Allow read access on document_chunks" ON document_chunks
-    FOR SELECT USING (true);
-
-CREATE POLICY "Allow write access on document_chunks" ON document_chunks
-    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow service_role full access on document_chunks" ON document_chunks
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
 -- Documentation Comments
 COMMENT ON TABLE documents IS 'HandoverIQ: Ingested employee and project source documents with extraction lifecycle metadata';

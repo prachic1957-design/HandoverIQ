@@ -32,9 +32,10 @@ CREATE TABLE IF NOT EXISTS knowledge_findings (
         CHECK (confidence IN ('high', 'medium', 'low')),
     evidence_references JSONB NOT NULL DEFAULT '[]'::jsonb,
     review_status VARCHAR(50) NOT NULL DEFAULT 'needs_review'
-        CHECK (review_status IN ('needs_review', 'verified', 'rejected')),
+        CHECK (review_status IN ('needs_review', 'approved', 'verified', 'rejected')),
     reviewed_by VARCHAR(150),
     reviewed_at TIMESTAMPTZ,
+    reviewer_notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
@@ -49,18 +50,24 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_findings_review ON knowledge_findings(r
 ALTER TABLE knowledge_analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_findings ENABLE ROW LEVEL SECURITY;
 
--- 5. RLS Policies
-CREATE POLICY "Allow read access on knowledge_analyses" ON knowledge_analyses
-    FOR SELECT USING (true);
+-- 5. RLS Policies: Backend-Only Access via service_role
+-- Explicitly revoke public and ordinary user access. Only backend SUPABASE_SERVICE_ROLE_KEY has access.
+DROP POLICY IF EXISTS "Allow read access on knowledge_analyses" ON knowledge_analyses;
+DROP POLICY IF EXISTS "Allow write access on knowledge_analyses" ON knowledge_analyses;
+DROP POLICY IF EXISTS "Allow read access on knowledge_findings" ON knowledge_findings;
+DROP POLICY IF EXISTS "Allow write access on knowledge_findings" ON knowledge_findings;
+DROP POLICY IF EXISTS "Allow service_role full access on knowledge_analyses" ON knowledge_analyses;
+DROP POLICY IF EXISTS "Allow service_role full access on knowledge_findings" ON knowledge_findings;
 
-CREATE POLICY "Allow write access on knowledge_analyses" ON knowledge_analyses
-    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow service_role full access on knowledge_analyses" ON knowledge_analyses
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
-CREATE POLICY "Allow read access on knowledge_findings" ON knowledge_findings
-    FOR SELECT USING (true);
-
-CREATE POLICY "Allow write access on knowledge_findings" ON knowledge_findings
-    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow service_role full access on knowledge_findings" ON knowledge_findings
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
 
 -- Documentation Comments
 COMMENT ON TABLE knowledge_analyses IS 'HandoverIQ: Structured Gemini AI knowledge reconstruction sessions grounded in document evidence';

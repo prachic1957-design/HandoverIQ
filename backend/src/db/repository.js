@@ -1428,23 +1428,28 @@ export const db = {
 
   _normalizeHandoverPackage(pkg) {
     if (!pkg) return null;
+    // Supabase returns aliased joins under the alias key name:
+    //   departing_employee:departing_employee_id -> pkg.departing_employee
+    //   replacement_employee:replacement_employee_id -> pkg.package_assignments[n].replacement_employee
+    // Legacy fallback for 'employees' key (old alias) is kept for safety.
     const departingEmployee = pkg.departing_employee || pkg.employees || null;
 
     let assignment = pkg.assignment || null;
     if (!assignment && Array.isArray(pkg.package_assignments) && pkg.package_assignments.length > 0) {
       const rawAssignment = pkg.package_assignments[0];
-      const repEmp = rawAssignment.employees || rawAssignment.replacement_employee || null;
+      // With the fixed alias, Supabase returns replacement_employee directly
+      const repEmp = rawAssignment.replacement_employee || rawAssignment.employees || null;
       assignment = {
         ...rawAssignment,
-        employees: repEmp,
-        replacement_employee: repEmp
+        replacement_employee: repEmp,
+        employees: repEmp  // keep for backwards compat
       };
     } else if (assignment) {
       const repEmp = assignment.replacement_employee || assignment.employees || null;
       assignment = {
         ...assignment,
-        employees: repEmp,
-        replacement_employee: repEmp
+        replacement_employee: repEmp,
+        employees: repEmp
       };
     }
 
@@ -1453,8 +1458,8 @@ export const db = {
           const repEmp = a.replacement_employee || a.employees || null;
           return {
             ...a,
-            employees: repEmp,
-            replacement_employee: repEmp
+            replacement_employee: repEmp,
+            employees: repEmp
           };
         })
       : (assignment ? [assignment] : []);
@@ -1473,12 +1478,12 @@ export const db = {
       let query = supabase.from('handover_packages').select(`
         *,
         projects ( id, name ),
-        employees:departing_employee_id ( id, full_name, designation, email ),
+        departing_employee:departing_employee_id ( id, full_name, designation, email ),
         package_assignments (
           id,
           replacement_employee_id,
           assigned_at,
-          employees:replacement_employee_id ( id, full_name, designation, email )
+          replacement_employee:replacement_employee_id ( id, full_name, designation, email )
         )
       `);
       if (project_id) query = query.eq('project_id', project_id);
@@ -1518,12 +1523,12 @@ export const db = {
       const { data, error } = await supabase.from('handover_packages').select(`
         *,
         projects ( id, name, description ),
-        employees:departing_employee_id ( id, full_name, designation, email ),
+        departing_employee:departing_employee_id ( id, full_name, designation, email ),
         package_assignments (
           id,
           replacement_employee_id,
           assigned_at,
-          employees:replacement_employee_id ( id, full_name, designation, email )
+          replacement_employee:replacement_employee_id ( id, full_name, designation, email )
         )
       `).eq('id', id).single();
       if (error) throw error;
@@ -1616,14 +1621,14 @@ export const db = {
         .insert([{ package_id, replacement_employee_id }])
         .select(`
           *,
-          employees:replacement_employee_id ( id, full_name, designation, email )
+          replacement_employee:replacement_employee_id ( id, full_name, designation, email )
         `)
         .single();
       if (error) throw error;
 
       // Update package status to assigned
       await this.updateHandoverPackageStatus(package_id, 'assigned', 'Manager');
-      const repEmp = data.employees || null;
+      const repEmp = data.replacement_employee || data.employees || null;
       return {
         ...data,
         employees: repEmp,

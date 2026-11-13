@@ -45,11 +45,15 @@ export default function HandoverReportsView() {
         empRes.json()
       ]);
 
-      setPackages(Array.isArray(pkgs) ? pkgs : []);
-      setAnalyses(Array.isArray(anas) ? anas : []);
-      setEmployees(Array.isArray(emps) ? emps : []);
-      if (Array.isArray(pkgs) && pkgs.length > 0 && !selectedPackage) {
-        loadPackageDetails(pkgs[0].id);
+      const packageList = Array.isArray(pkgs) ? pkgs : (Array.isArray(pkgs?.data) ? pkgs.data : []);
+      const analysisList = Array.isArray(anas) ? anas : (Array.isArray(anas?.data) ? anas.data : []);
+      const employeeList = Array.isArray(emps?.data) ? emps.data : (Array.isArray(emps) ? emps : []);
+
+      setPackages(packageList);
+      setAnalyses(analysisList);
+      setEmployees(employeeList);
+      if (packageList.length > 0 && !selectedPackage) {
+        loadPackageDetails(packageList[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -362,7 +366,7 @@ export default function HandoverReportsView() {
                       >
                         <option value="">-- Select Replacement Employee --</option>
                         {employees
-                          .filter(e => e.id !== selectedPackage.departing_employee_id)
+                          .filter(e => e.id !== (selectedPackage.departing_employee_id || selectedPackage.departing_employee?.id))
                           .map(e => (
                             <option key={e.id} value={e.id}>
                               {e.full_name} ({e.designation})

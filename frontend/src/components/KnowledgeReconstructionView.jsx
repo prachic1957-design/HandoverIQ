@@ -10,13 +10,16 @@ export default function KnowledgeReconstructionView() {
   const [findings, setFindings] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState('');
+  const [isNetworkError, setIsNetworkError] = useState(false);
 
   // Load projects & employees on mount
   useEffect(() => {
     const fetchData = async () => {
       setInitialLoading(true);
       setError('');
+      setIsNetworkError(false);
       try {
         const [projRes, empRes] = await Promise.all([
           fetch(`${apiBase}/projects`),
@@ -66,7 +69,13 @@ export default function KnowledgeReconstructionView() {
         setEmployees(employeeList);
       } catch (e) {
         console.error('Error loading projects/employees for Knowledge Reconstruction:', e);
-        setError(e.message || 'Failed to load projects or employees');
+        const errMsg = e.message || '';
+        if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('networkerror')) {
+          setIsNetworkError(true);
+          setError('Unable to connect to the backend server. The instance may be starting up (cold start). Please check your connection and retry.');
+        } else {
+          setError(errMsg || 'Failed to load projects or employees');
+        }
       } finally {
         setInitialLoading(false);
       }
@@ -76,12 +85,17 @@ export default function KnowledgeReconstructionView() {
   }, [apiBase]);
 
   const startAnalysis = async () => {
+    if (loading) return; // Prevent duplicate requests
     if (!selectedProject || !selectedEmployee) {
       setError('Select both project and employee');
+      setIsNetworkError(false);
       return;
     }
     setLoading(true);
     setError('');
+    setIsNetworkError(false);
+    setLoadingStep('Synthesizing evidence and reconstructing knowledge with Gemini AI…');
+
     try {
       const res = await fetch(`${apiBase}/knowledge/analyze`, {
         method: 'POST',
@@ -101,15 +115,24 @@ export default function KnowledgeReconstructionView() {
       setFindings(findingsList);
     } catch (e) {
       console.error(e);
-      setError(e.message || 'Analysis failed');
+      const errMsg = e.message || '';
+      if (errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('networkerror')) {
+        setIsNetworkError(true);
+        setError('Network error: Unable to reach the backend service. If the server was idle, it may have been waking up from a cold start. Your selections have been preserved.');
+      } else {
+        setIsNetworkError(false);
+        setError(errMsg || 'Analysis failed');
+      }
     } finally {
       setLoading(false);
+      setLoadingStep('');
     }
   };
 
   const updateReview = async (findingId, status, notes = '') => {
     try {
       setError('');
+      setIsNetworkError(false);
       const res = await fetch(`${apiBase}/knowledge/findings/${findingId}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -143,15 +166,37 @@ export default function KnowledgeReconstructionView() {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-900/60 border border-red-500/40 text-red-200 rounded-lg text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button
-            onClick={() => setError('')}
-            className="text-red-300 hover:text-white font-bold text-sm px-2 py-0.5 rounded"
-            aria-label="Dismiss error"
-          >
-            ✕
-          </button>
+        <div className="p-4 bg-red-900/60 border border-red-500/40 text-red-200 rounded-lg text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <span className="text-red-400 font-bold text-base leading-none mt-0.5">⚠️</span>
+            <div className="space-y-1">
+              <span>{error}</span>
+              {isNetworkError && (
+                <p className="text-xs text-red-300/80">
+                  Click <strong>Retry Analysis</strong> to run the request again with the current project and employee.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {isNetworkError && selectedProject && selectedEmployee && (
+              <button
+                onClick={startAnalysis}
+                disabled={loading}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded text-xs font-medium transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🔄</span>
+                <span>Retry Analysis</span>
+              </button>
+            )}
+            <button
+              onClick={() => { setError(''); setIsNetworkError(false); }}
+              className="text-red-300 hover:text-white font-bold text-sm px-2 py-1 rounded"
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -216,6 +261,19 @@ export default function KnowledgeReconstructionView() {
           </button>
         </div>
       </div>
+
+      {loading && (
+        <div className="p-4 bg-blue-950/40 border border-blue-500/30 rounded-xl flex items-center gap-3 animate-pulse">
+          <svg className="animate-spin h-5 w-5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <div className="text-xs text-blue-200">
+            <p className="font-semibold text-blue-100">{loadingStep || 'AI Analysis in progress…'}</p>
+            <p className="text-blue-300/80 mt-0.5">Grounding extracted chunks with citations. This usually takes 20–35 seconds.</p>
+          </div>
+        </div>
+      )}
 
       {analysis && (
         <div className="p-5 bg-[#0E172E] rounded-xl border border-slate-700/80 space-y-3">
@@ -298,10 +356,23 @@ export default function KnowledgeReconstructionView() {
                         if (notes !== null) updateReview(f.id, 'needs_review', notes);
                       }}
                     >
-                      Review / Note
+                      Add Note
                     </button>
                   </div>
                 </div>
+
+                {f.evidence_references && f.evidence_references.length > 0 && (
+                  <div className="pt-2 border-t border-slate-800 text-xs text-slate-400 space-y-1">
+                    <span className="font-medium text-slate-300">Evidence Sources:</span>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {f.evidence_references.map((e, idx) => (
+                        <li key={idx} className="truncate">
+                          {e.document_name || 'Document'} {e.page_number ? `(Page ${e.page_number})` : ''}: "{e.excerpt}"
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ))}
           </div>

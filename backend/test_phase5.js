@@ -164,6 +164,19 @@ async function runTests() {
     });
     record('Assigns replacement employee and transitions package status to "assigned"', assignRes.status === 201 && assignRes.data.assignment);
 
+    // 9b. Regression Check: GET /api/handovers/:id preserves assignment and returns successor details
+    const refreshedPkg = await request(`/handovers/${pkgId}`);
+    const singleSuccessorName = refreshedPkg.data?.assignment?.replacement_employee?.full_name ||
+      refreshedPkg.data?.package_assignments?.[0]?.employees?.full_name;
+    record('GET /api/handovers/:id preserves assignment with successor full_name', refreshedPkg.status === 200 && singleSuccessorName === replacementEmp.full_name);
+
+    // 9c. Regression Check: GET /api/handovers list includes assignment and successor details
+    const refreshedList = await request('/handovers');
+    const listPkg = (refreshedList.data || []).find(p => p.id === pkgId);
+    const listSuccessorName = listPkg?.assignment?.replacement_employee?.full_name ||
+      listPkg?.package_assignments?.[0]?.employees?.full_name;
+    record('GET /api/handovers list includes assignment with successor full_name', refreshedList.status === 200 && listSuccessorName === replacementEmp.full_name);
+
     // 10. Business Rule: Prevent duplicate replacement assignment
     const dupAssignRes = await request(`/handovers/${pkgId}/assign`, {
       method: 'POST',
@@ -191,7 +204,10 @@ async function runTests() {
 
     // 14. GET /api/handovers/:id/briefing - Day-1 Briefing
     const briefRes = await request(`/handovers/${pkgId}/briefing`);
-    record('GET /api/handovers/:id/briefing compiles Day-1 Onboarding Briefing', briefRes.status === 200 && briefRes.data.day_one_briefing);
+    const hasBriefingSuccessor = briefRes.status === 200 &&
+      briefRes.data.day_one_briefing &&
+      briefRes.data.successor?.full_name === replacementEmp.full_name;
+    record('GET /api/handovers/:id/briefing compiles Day-1 Onboarding Briefing with assigned successor', hasBriefingSuccessor);
 
     // 15. Invalid package ID handling
     const invalidPkgRes = await request('/handovers/00000000-0000-0000-0000-000000000000');

@@ -1426,20 +1426,67 @@ export const db = {
     return newPkg;
   },
 
+  _normalizeHandoverPackage(pkg) {
+    if (!pkg) return null;
+    const departingEmployee = pkg.departing_employee || pkg.employees || null;
+
+    let assignment = pkg.assignment || null;
+    if (!assignment && Array.isArray(pkg.package_assignments) && pkg.package_assignments.length > 0) {
+      const rawAssignment = pkg.package_assignments[0];
+      const repEmp = rawAssignment.employees || rawAssignment.replacement_employee || null;
+      assignment = {
+        ...rawAssignment,
+        employees: repEmp,
+        replacement_employee: repEmp
+      };
+    } else if (assignment) {
+      const repEmp = assignment.replacement_employee || assignment.employees || null;
+      assignment = {
+        ...assignment,
+        employees: repEmp,
+        replacement_employee: repEmp
+      };
+    }
+
+    const packageAssignments = Array.isArray(pkg.package_assignments) && pkg.package_assignments.length > 0
+      ? pkg.package_assignments.map(a => {
+          const repEmp = a.replacement_employee || a.employees || null;
+          return {
+            ...a,
+            employees: repEmp,
+            replacement_employee: repEmp
+          };
+        })
+      : (assignment ? [assignment] : []);
+
+    return {
+      ...pkg,
+      departing_employee: departingEmployee,
+      employees: departingEmployee,
+      assignment,
+      package_assignments: packageAssignments
+    };
+  },
+
   async listHandoverPackages({ project_id, departing_employee_id, status } = {}) {
     if (isConfigured) {
       let query = supabase.from('handover_packages').select(`
         *,
         projects ( id, name ),
         employees:departing_employee_id ( id, full_name, designation, email ),
-        package_assignments ( id, replacement_employee_id, assigned_at )
+        package_assignments (
+          id,
+          replacement_employee_id,
+          assigned_at,
+          employees:replacement_employee_id ( id, full_name, designation, email )
+        )
       `);
       if (project_id) query = query.eq('project_id', project_id);
       if (departing_employee_id) query = query.eq('departing_employee_id', departing_employee_id);
       if (status) query = query.eq('status', status);
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      return (data || []).map(pkg => this._normalizeHandoverPackage(pkg));
     }
 
     if (!global.mockHandoverPackages) global.mockHandoverPackages = [];
@@ -1457,12 +1504,12 @@ export const db = {
         const repEmp = mockEmployees.find(e => e.id === assignment.replacement_employee_id);
         replacement = repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation } : null;
       }
-      return {
+      return this._normalizeHandoverPackage({
         ...pkg,
         projects: proj ? { id: proj.id, name: proj.name } : null,
         departing_employee: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
-        assignment: assignment ? { ...assignment, replacement_employee: replacement } : null
-      };
+        assignment: assignment ? { ...assignment, replacement_employee: replacement, employees: replacement } : null
+      });
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   },
 
@@ -1480,7 +1527,7 @@ export const db = {
         )
       `).eq('id', id).single();
       if (error) throw error;
-      return data;
+      return this._normalizeHandoverPackage(data);
     }
 
     if (!global.mockHandoverPackages) return null;
@@ -1496,12 +1543,12 @@ export const db = {
       replacement = repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation, email: repEmp.email } : null;
     }
 
-    return {
+    return this._normalizeHandoverPackage({
       ...pkg,
       projects: proj ? { id: proj.id, name: proj.name, description: proj.description } : null,
       departing_employee: emp ? { id: emp.id, full_name: emp.full_name, designation: emp.designation, email: emp.email } : null,
-      assignment: assignment ? { ...assignment, replacement_employee: replacement } : null
-    };
+      assignment: assignment ? { ...assignment, replacement_employee: replacement, employees: replacement } : null
+    });
   },
 
   async updateHandoverPackageStatus(package_id, newStatus, changed_by) {
@@ -1576,7 +1623,12 @@ export const db = {
 
       // Update package status to assigned
       await this.updateHandoverPackageStatus(package_id, 'assigned', 'Manager');
-      return data;
+      const repEmp = data.employees || null;
+      return {
+        ...data,
+        employees: repEmp,
+        replacement_employee: repEmp
+      };
     }
 
     if (!global.mockPackageAssignments) global.mockPackageAssignments = [];
@@ -1598,9 +1650,11 @@ export const db = {
     await this.updateHandoverPackageStatus(package_id, 'assigned', 'Manager');
 
     const repEmp = mockEmployees.find(e => e.id === replacement_employee_id);
+    const replacement = repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation, email: repEmp.email } : null;
     return {
       ...assignment,
-      employees: repEmp ? { id: repEmp.id, full_name: repEmp.full_name, designation: repEmp.designation, email: repEmp.email } : null
+      employees: replacement,
+      replacement_employee: replacement
     };
   },
 

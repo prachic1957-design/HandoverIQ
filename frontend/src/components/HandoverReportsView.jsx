@@ -174,6 +174,24 @@ export default function HandoverReportsView() {
     }
   };
 
+  const getSuccessor = (pkg) => {
+    if (!pkg) return null;
+    return (
+      pkg.assignment?.replacement_employee ||
+      pkg.assignment?.employees ||
+      (Array.isArray(pkg.package_assignments) && (
+        pkg.package_assignments[0]?.replacement_employee ||
+        pkg.package_assignments[0]?.employees
+      )) ||
+      null
+    );
+  };
+
+  const getPredecessor = (pkg) => {
+    if (!pkg) return null;
+    return pkg.departing_employee || pkg.employees || null;
+  };
+
   const getStatusBadge = (status) => {
     const map = {
       draft: 'bg-slate-700 text-slate-300 border-slate-600',
@@ -288,14 +306,17 @@ export default function HandoverReportsView() {
                   {getStatusBadge(pkg.status)}
                 </div>
                 <div className="text-[11px] text-slate-300">
-                  Predecessor: <span className="font-semibold text-slate-100">{pkg.departing_employee?.full_name || 'N/A'}</span>
+                  Predecessor: <span className="font-semibold text-slate-100">{getPredecessor(pkg)?.full_name || 'N/A'}</span>
                 </div>
-                {pkg.assignment?.replacement_employee && (
-                  <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1.5">
-                    <UserCheck className="w-3 h-3" />
-                    <span>Assigned: {pkg.assignment.replacement_employee.full_name}</span>
-                  </div>
-                )}
+                {(() => {
+                  const successor = getSuccessor(pkg);
+                  return successor ? (
+                    <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1.5">
+                      <UserCheck className="w-3 h-3" />
+                      <span>Assigned: {successor.full_name}</span>
+                    </div>
+                  ) : null;
+                })()}
                 <div className="text-[10px] text-slate-500 mt-2">
                   Created {new Date(pkg.created_at).toLocaleString()}
                 </div>
@@ -348,16 +369,19 @@ export default function HandoverReportsView() {
                 <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <span className="text-xs font-semibold text-slate-300">Successor Assignment:</span>
-                    {selectedPackage.assignment?.replacement_employee ? (
-                      <span className="ml-2 text-xs font-bold text-emerald-400">
-                        {selectedPackage.assignment.replacement_employee.full_name} ({selectedPackage.assignment.replacement_employee.designation})
-                      </span>
-                    ) : (
-                      <span className="ml-2 text-xs text-amber-400 font-medium">Unassigned</span>
-                    )}
+                    {(() => {
+                      const successor = getSuccessor(selectedPackage);
+                      return successor ? (
+                        <span className="ml-2 text-xs font-bold text-emerald-400">
+                          {successor.full_name} ({successor.designation})
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-xs text-amber-400 font-medium">Unassigned</span>
+                      );
+                    })()}
                   </div>
 
-                  {!selectedPackage.assignment?.replacement_employee && (
+                  {!getSuccessor(selectedPackage) && (
                     <div className="flex items-center gap-2">
                       <select
                         value={selectedReplacementId}
@@ -366,7 +390,7 @@ export default function HandoverReportsView() {
                       >
                         <option value="">-- Select Replacement Employee --</option>
                         {employees
-                          .filter(e => e.id !== (selectedPackage.departing_employee_id || selectedPackage.departing_employee?.id))
+                          .filter(e => e.id !== (selectedPackage.departing_employee_id || getPredecessor(selectedPackage)?.id))
                           .map(e => (
                             <option key={e.id} value={e.id}>
                               {e.full_name} ({e.designation})
@@ -406,6 +430,16 @@ export default function HandoverReportsView() {
                       {briefing.summary}
                     </p>
                   </div>
+
+                  {/* Successor Notification */}
+                  {(briefing.successor || getSuccessor(selectedPackage)) && (
+                    <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-xs flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-slate-300">
+                        Assigned Successor: <strong className="text-white">{(briefing.successor || getSuccessor(selectedPackage)).full_name}</strong> ({ (briefing.successor || getSuccessor(selectedPackage)).designation })
+                      </span>
+                    </div>
+                  )}
 
                   {/* Predecessor Responsibilities */}
                   <div>

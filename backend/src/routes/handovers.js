@@ -234,12 +234,17 @@ router.get('/:id/briefing', isAuthenticated, async (req, res) => {
     const verifiedFindings = content.verified_findings || [];
     const brief = content.replacement_brief || {};
 
+    const successor = pkg.assignment?.replacement_employee
+      || pkg.assignment?.employees
+      || (Array.isArray(pkg.package_assignments) && (pkg.package_assignments[0]?.replacement_employee || pkg.package_assignments[0]?.employees))
+      || null;
+
     const briefingPayload = {
       package_id: pkg.id,
       status: pkg.status,
-      project: content.project || {},
-      predecessor: content.departing_employee || {},
-      successor: pkg.assignment?.replacement_employee || null,
+      project: content.project || pkg.projects || {},
+      predecessor: content.departing_employee || pkg.departing_employee || pkg.employees || {},
+      successor,
       summary: pkg.package_summary,
       day_one_briefing: {
         project_overview: brief.project_overview || content.project?.description || 'N/A',

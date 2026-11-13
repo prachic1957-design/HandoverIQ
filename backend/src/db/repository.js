@@ -1287,10 +1287,26 @@ export const db = {
 
   async createKnowledgeFindings(analysis_id, findings = []) {
     if (!Array.isArray(findings) || findings.length === 0) return [];
+    
+    // Canonical finding_type validator & normalizer
+    const validFindingTypes = new Set(['work_history', 'milestone', 'pending_task', 'risk_blocker', 'knowledge_gap', 'replacement_brief']);
+    const safeType = (type) => {
+      if (!type) return 'work_history';
+      const clean = String(type).trim().toLowerCase();
+      if (validFindingTypes.has(clean)) return clean;
+      if (clean === 'risk' || clean === 'risks' || clean === 'risks_and_blockers' || clean === 'blocker' || clean === 'blockers') return 'risk_blocker';
+      if (clean === 'task' || clean === 'tasks' || clean === 'pending_tasks') return 'pending_task';
+      if (clean === 'milestones') return 'milestone';
+      if (clean === 'work' || clean === 'history' || clean === 'employee_work_history') return 'work_history';
+      if (clean === 'gap' || clean === 'gaps' || clean === 'knowledge_gaps') return 'knowledge_gap';
+      if (clean === 'brief' || clean === 'briefing') return 'replacement_brief';
+      return 'work_history';
+    };
+
     if (isConfigured) {
       const payloads = findings.map(f => ({
         analysis_id,
-        finding_type: f.finding_type,
+        finding_type: safeType(f.finding_type),
         title: f.title,
         description: f.description,
         status: f.status || null,
@@ -1309,7 +1325,7 @@ export const db = {
       const newFinding = {
         id: crypto.randomUUID(),
         analysis_id,
-        finding_type: f.finding_type,
+        finding_type: safeType(f.finding_type),
         title: f.title,
         description: f.description,
         status: f.status || null,

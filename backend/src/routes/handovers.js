@@ -246,7 +246,7 @@ router.get('/:id/briefing', isAuthenticated, async (req, res) => {
         predecessor_role: brief.employee_responsibilities || content.departing_employee?.designation || 'N/A',
         completed_milestones: verifiedFindings.filter(f => f.finding_type === 'milestone' || f.finding_type === 'work_history'),
         critical_pending_tasks: verifiedFindings.filter(f => f.finding_type === 'pending_task'),
-        identified_risks_and_blockers: verifiedFindings.filter(f => f.finding_type === 'risk'),
+        identified_risks_and_blockers: verifiedFindings.filter(f => f.finding_type === 'risk_blocker' || f.finding_type === 'risk'),
         knowledge_gaps: verifiedFindings.filter(f => f.finding_type === 'knowledge_gap'),
         actionable_next_steps: brief.suggested_next_steps || 'Review project repository and connect with project lead.',
         important_contacts: brief.important_contacts || 'Consult project team roster.'

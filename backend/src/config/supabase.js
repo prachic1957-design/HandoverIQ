@@ -4,7 +4,9 @@ import { config } from './env.js';
 let supabase = null;
 let isConfigured = false;
 
-if (config.supabase.url && (config.supabase.serviceRoleKey || config.supabase.anonKey)) {
+const isPlaceholder = config.supabase.url.includes('your-project-ref') || config.supabase.url.includes('your-project.supabase.co');
+
+if (config.supabase.url && !isPlaceholder && (config.supabase.serviceRoleKey || config.supabase.anonKey)) {
   try {
     const key = config.supabase.serviceRoleKey || config.supabase.anonKey;
     supabase = createClient(config.supabase.url, key, {

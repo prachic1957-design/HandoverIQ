@@ -8,6 +8,42 @@ import { isAuthenticated } from '../middleware/auth.js'; // assumes auth middlew
 
 const router = express.Router();
 
+// Allowed finding types adhering to PostgreSQL constraint:
+// CHECK (finding_type IN ('work_history', 'milestone', 'pending_task', 'risk_blocker', 'knowledge_gap', 'replacement_brief'))
+export const ALLOWED_FINDING_TYPES = new Set([
+  'work_history',
+  'milestone',
+  'pending_task',
+  'risk_blocker',
+  'knowledge_gap',
+  'replacement_brief'
+]);
+
+export function normalizeFindingType(type) {
+  if (!type) return 'work_history';
+  const clean = String(type).trim().toLowerCase();
+  if (ALLOWED_FINDING_TYPES.has(clean)) return clean;
+  if (clean === 'risk' || clean === 'risks' || clean === 'risks_and_blockers' || clean === 'blocker' || clean === 'blockers') {
+    return 'risk_blocker';
+  }
+  if (clean === 'task' || clean === 'tasks' || clean === 'pending_tasks') {
+    return 'pending_task';
+  }
+  if (clean === 'milestones') {
+    return 'milestone';
+  }
+  if (clean === 'work' || clean === 'history' || clean === 'employee_work_history') {
+    return 'work_history';
+  }
+  if (clean === 'gap' || clean === 'gaps' || clean === 'knowledge_gaps') {
+    return 'knowledge_gap';
+  }
+  if (clean === 'brief' || clean === 'briefing') {
+    return 'replacement_brief';
+  }
+  return 'work_history';
+}
+
 // In-flight analysis deduplication cache
 const inFlightAnalyses = new Map();
 
@@ -53,7 +89,7 @@ router.post('/analyze', isAuthenticated, async (req, res) => {
       const addFindings = (type, items) => {
         items.forEach(item => {
           findingsPayload.push({
-            finding_type: type,
+            finding_type: normalizeFindingType(type),
             title: item.title || item.work_item || 'Untitled',
             description: item.description || item.evidence_description || '',
             status: item.status || null,
@@ -65,7 +101,7 @@ router.post('/analyze', isAuthenticated, async (req, res) => {
       addFindings('work_history', employee_work_history);
       addFindings('milestone', milestones);
       addFindings('pending_task', pending_tasks);
-      addFindings('risk', risks_and_blockers);
+      addFindings('risk_blocker', risks_and_blockers);
       addFindings('knowledge_gap', knowledge_gaps);
       const createdFindings = await repository.createKnowledgeFindings(analysis.id, findingsPayload);
       return { analysis, findings: createdFindings };

@@ -15,7 +15,7 @@ export function isGeminiConfigured() {
 }
 
 export function getGeminiModel() {
-  return config.gemini.model || 'gemini-2.5-flash';
+  return config.gemini.model || 'gemini-3.8-flash';
 }
 
 /**
@@ -238,7 +238,7 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
 /**
  * Execute AI Knowledge Reconstruction
  */
-export async function reconstructKnowledge({ employee, project, allChunks = [], mockResponse = null }) {
+export async function reconstructKnowledge({ employee, project, allChunks = [], mockResponse = null, model_name = null }) {
   if (allChunks.length === 0) {
     const err = new Error('No extracted knowledge chunks found for this project. Please upload project documents first.');
     err.code = 'NO_CHUNKS';
@@ -271,7 +271,7 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
     const secondChunk = allChunks.length > 1 ? allChunks[1] : allChunks[0];
 
     const syntheticDemoPayload = {
-      summary: `[DEMO MODE - Simulated Gemini 2.5 Flash] Knowledge reconstruction for ${employee.full_name} on project "${project.name}". Citations validated against ingested document chunks.`,
+      summary: `[DEMO MODE - Simulated Gemini 3.8 Flash] Knowledge reconstruction for ${employee.full_name} on project "${project.name}". Citations validated against ingested document chunks.`,
       employee_work_history: [
         {
           work_item: `${project.name} Architectural Baseline & Workstream`,
@@ -367,7 +367,7 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
 
     const validated = validateAndSanitizeFindings(syntheticDemoPayload, validChunkMap);
     return {
-      model_name: 'gemini-2.5-flash-demo-fallback',
+      model_name: model_name || 'gemini-3.8-flash-demo-fallback',
       analysis_summary: validated.summary,
       structured_result: validated,
       total_chunks_analyzed: allChunks.length,
@@ -375,7 +375,7 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
     };
   }
 
-  const modelName = getGeminiModel();
+  const modelName = model_name || getGeminiModel();
 
   // Separate chunks into direct employee vs general project context
   const employeeChunks = allChunks.filter(c => c.employee_id === employee.id);

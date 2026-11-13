@@ -26,7 +26,7 @@ router.post('/analyze', isAuthenticated, async (req, res) => {
     if (!project || !employee) {
       return res.status(404).json({ error: 'Project or Employee not found' });
     }
-    const aiResult = await reconstructKnowledge({ employee, project, allChunks: chunks, mockResponse: mockResponse || null });
+    const aiResult = await reconstructKnowledge({ employee, project, allChunks: chunks, mockResponse: mockResponse || null, model_name });
     const analysis = await repository.createKnowledgeAnalysis({
       project_id,
       employee_id,

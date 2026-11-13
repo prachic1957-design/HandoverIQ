@@ -1428,41 +1428,46 @@ export const db = {
 
   _normalizeHandoverPackage(pkg) {
     if (!pkg) return null;
-    // Supabase returns aliased joins under the alias key name:
-    //   departing_employee:departing_employee_id -> pkg.departing_employee
-    //   replacement_employee:replacement_employee_id -> pkg.package_assignments[n].replacement_employee
-    // Legacy fallback for 'employees' key (old alias) is kept for safety.
+    // Departing employee
     const departingEmployee = pkg.departing_employee || pkg.employees || null;
 
-    let assignment = pkg.assignment || null;
-    if (!assignment && Array.isArray(pkg.package_assignments) && pkg.package_assignments.length > 0) {
-      const rawAssignment = pkg.package_assignments[0];
-      // With the fixed alias, Supabase returns replacement_employee directly
+    // Handle package_assignments which PostgREST returns as an object (single record due to UNIQUE(package_id)) or array
+    let rawAssignment = pkg.assignment || null;
+    let rawList = [];
+
+    if (Array.isArray(pkg.package_assignments)) {
+      rawList = pkg.package_assignments;
+      if (!rawAssignment && rawList.length > 0) {
+        rawAssignment = rawList[0];
+      }
+    } else if (pkg.package_assignments && typeof pkg.package_assignments === 'object') {
+      // PostgREST 1:1 relation returns an object, not an array
+      if (!rawAssignment) {
+        rawAssignment = pkg.package_assignments;
+      }
+      rawList = [pkg.package_assignments];
+    } else if (rawAssignment) {
+      rawList = [rawAssignment];
+    }
+
+    let assignment = null;
+    if (rawAssignment) {
       const repEmp = rawAssignment.replacement_employee || rawAssignment.employees || null;
       assignment = {
         ...rawAssignment,
-        replacement_employee: repEmp,
-        employees: repEmp  // keep for backwards compat
-      };
-    } else if (assignment) {
-      const repEmp = assignment.replacement_employee || assignment.employees || null;
-      assignment = {
-        ...assignment,
         replacement_employee: repEmp,
         employees: repEmp
       };
     }
 
-    const packageAssignments = Array.isArray(pkg.package_assignments) && pkg.package_assignments.length > 0
-      ? pkg.package_assignments.map(a => {
-          const repEmp = a.replacement_employee || a.employees || null;
-          return {
-            ...a,
-            replacement_employee: repEmp,
-            employees: repEmp
-          };
-        })
-      : (assignment ? [assignment] : []);
+    const packageAssignments = rawList.map(a => {
+      const repEmp = a.replacement_employee || a.employees || null;
+      return {
+        ...a,
+        replacement_employee: repEmp,
+        employees: repEmp
+      };
+    });
 
     return {
       ...pkg,

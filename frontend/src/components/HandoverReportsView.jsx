@@ -386,11 +386,11 @@ export default function HandoverReportsView() {
                   </div>
 
                   {!getSuccessor(selectedPackage) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <select
                         value={selectedReplacementId}
                         onChange={(e) => setSelectedReplacementId(e.target.value)}
-                        className="bg-[#0E172E] border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:outline-none"
+                        className="bg-[#0E172E] border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:outline-none w-full sm:w-auto"
                       >
                         <option value="">-- Select Replacement Employee --</option>
                         {employees
@@ -404,7 +404,7 @@ export default function HandoverReportsView() {
                       <button
                         onClick={handleAssignReplacement}
                         disabled={actionLoading || !selectedReplacementId}
-                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 shrink-0"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Assign</span>

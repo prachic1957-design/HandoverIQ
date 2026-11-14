@@ -31,23 +31,22 @@ export default function StatCard({ title, value, subtitle, icon: Icon, color = '
   const scheme = colorMap[color] || colorMap.blue;
 
   return (
-    <div className={`p-5 rounded-xl bg-[#14213D]/70 border border-slate-800/80 hover:border-slate-700 transition-all duration-200 shadow-lg ${scheme.glow}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wide uppercase text-slate-400">{title}</span>
-        <div className={`p-2.5 rounded-lg ${scheme.bg} ${scheme.border} border`}>
+    <div className={`p-4 sm:p-5 rounded-xl bg-[#14213D]/70 border border-slate-800/80 hover:border-slate-700 transition-all duration-200 shadow-lg ${scheme.glow} flex flex-col justify-between`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] sm:text-xs font-semibold tracking-wide uppercase text-slate-400 truncate">{title}</span>
+        <div className={`p-2 sm:p-2.5 rounded-lg ${scheme.bg} ${scheme.border} border shrink-0`}>
           <Icon className={`w-4 h-4 ${scheme.text}`} />
         </div>
       </div>
-      <div className="mt-4 flex items-baseline gap-2">
-        <span className="text-2xl font-black tracking-tight text-white">{value}</span>
+      <div className="mt-3 sm:mt-4 flex flex-wrap items-baseline gap-1.5 sm:gap-2">
+        <span className="text-xl sm:text-2xl font-black tracking-tight text-white">{value}</span>
         {trend && (
-          <span className="text-xs font-medium text-emerald-400">{trend}</span>
+          <span className="text-[11px] sm:text-xs font-medium text-emerald-400">{trend}</span>
         )}
       </div>
       {subtitle && (
-        <p className="mt-1 text-xs text-slate-400 font-medium">{subtitle}</p>
+        <p className="mt-1 text-[11px] sm:text-xs text-slate-400 font-medium leading-relaxed">{subtitle}</p>
       )}
     </div>
   );
 }
-

@@ -14,6 +14,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [backendStatus, setBackendStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Check backend health endpoint
   const checkBackendHealth = async () => {
@@ -65,22 +66,28 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#0B1020] text-slate-100 overflow-hidden font-sans">
-      {/* Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Sidebar Navigation (desktop sidebar + mobile drawer) */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
         {/* Top Header */}
         <Header
           activeTab={activeTab}
           backendStatus={backendStatus}
           onRefreshStatus={checkBackendHealth}
           checkingStatus={checkingStatus}
+          onToggleMobileMenu={() => setMobileOpen(prev => !prev)}
         />
 
         {/* Scrollable Main Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <div className="max-w-7xl mx-auto w-full">
             {renderContent()}
           </div>
         </main>

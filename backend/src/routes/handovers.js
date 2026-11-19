@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { repository } from '../db/repository.js';
-import { isAuthenticated } from '../middleware/auth.js';
+import { isAuthenticated, requireHR } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -150,7 +150,7 @@ router.get('/:id', isAuthenticated, async (req, res) => {
  * Update package status and record status history.
  * Body: { status, changed_by? }
  */
-router.patch('/:id/status', isAuthenticated, async (req, res) => {
+router.patch('/:id/status', isAuthenticated, requireHR, async (req, res) => {
   try {
     const { status, changed_by } = req.body;
     if (!status) {
@@ -180,7 +180,7 @@ router.patch('/:id/status', isAuthenticated, async (req, res) => {
  * Assign a replacement employee to the handover package.
  * Body: { replacement_employee_id }
  */
-router.post('/:id/assign', isAuthenticated, async (req, res) => {
+router.post('/:id/assign', isAuthenticated, requireHR, async (req, res) => {
   try {
     const { replacement_employee_id } = req.body;
     if (!replacement_employee_id) {

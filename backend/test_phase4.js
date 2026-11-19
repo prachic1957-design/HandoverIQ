@@ -72,6 +72,13 @@ async function runPhase4Tests() {
     record('Demo fallback findings strictly cite existing document chunks', liveWithoutKeyRes.data?.findings?.every(f => Array.isArray(f.evidence_references)));
 
     // 5. Mock mode analysis execution with valid chunk citations
+    // NEW: verify cache after first successful demo analysis
+    const secondLiveRes = await request('/knowledge/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ project_id: project.id, employee_id: employee.id })
+    });
+    record('Second call without GEMINI_API_KEY still returns 201 with analysis', secondLiveRes.status === 201 && secondLiveRes.data?.analysis);
+
     const mockAiPayload = {
       summary: 'Automated synthesis of Sarah Jenkins architecture runbooks and cloud configurations.',
       employee_work_history: [

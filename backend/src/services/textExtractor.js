@@ -1,4 +1,6 @@
 import mammoth from 'mammoth';
+import { GoogleGenAI } from '@google/genai';
+import { config } from '../config/env.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfModule = require('pdf-parse');
@@ -8,13 +10,13 @@ const PDFParse = pdfModule.PDFParse || pdfModule.default?.PDFParse || pdfModule;
  * HandoverIQ Text Extraction & Source Traceability Service
  * Team: ROGUENOVA
  * 
- * Supports: PDF, DOCX, TXT, CSV
+ * Supports: PDF (selectable text + Gemini Multimodal OCR), DOCX, TXT, CSV
  * Extracts text and splits into source-linked chunks with strict page, section, or row references.
  */
 
 // Helper: Split text into traceable chunks
 export function createChunks(text, metadata = {}) {
-  const { defaultPage = null, defaultSection = null } = metadata;
+  const { defaultPage = null, defaultSection = null, isOcr = false } = metadata;
   const chunks = [];
   
   if (!text || !text.trim()) {
@@ -37,7 +39,8 @@ export function createChunks(text, metadata = {}) {
         chunk_index: chunkIdx++,
         extracted_content: currentBuffer.trim(),
         page_number: defaultPage,
-        section_reference: defaultSection || `Paragraph ${chunkIdx}`
+        section_reference: defaultSection || `Paragraph ${chunkIdx}`,
+        is_ocr: isOcr
       });
       currentBuffer = currentBuffer.slice(-overlapSize) + '\n\n' + para;
     } else {
@@ -50,7 +53,8 @@ export function createChunks(text, metadata = {}) {
       chunk_index: chunkIdx,
       extracted_content: currentBuffer.trim(),
       page_number: defaultPage,
-      section_reference: defaultSection || `Paragraph ${chunkIdx + 1}`
+      section_reference: defaultSection || `Paragraph ${chunkIdx + 1}`,
+      is_ocr: isOcr
     });
   }
 
@@ -58,10 +62,205 @@ export function createChunks(text, metadata = {}) {
 }
 
 /**
- * Extract text from PDF buffer
- * Preserves page numbering and detects scanned documents needing OCR
+ * Split OCR text into page-aware traceable chunks
  */
-async function extractPDF(buffer) {
+export function parseOcrTextToChunks(ocrText) {
+  const cleanText = ocrText.trim();
+  const chunks = [];
+  let chunkIndex = 0;
+
+  // Check for multi-page headers: --- PAGE <num> ---
+  const hasPageHeaders = /---\s*PAGE\s+\d+\s*---/i.test(cleanText);
+
+  if (hasPageHeaders) {
+    const segments = cleanText.split(/---\s*PAGE\s+(\d+)\s*---/i);
+    // segments[0] is preamble, segments[1] is pageNum, segments[2] is pageText...
+    for (let i = 1; i < segments.length; i += 2) {
+      const pageNum = parseInt(segments[i], 10) || 1;
+      const pageText = (segments[i + 1] || '').trim();
+      if (!pageText) continue;
+
+      const pageChunks = createChunks(pageText, {
+        defaultPage: pageNum,
+        defaultSection: `Page ${pageNum} (OCR)`,
+        isOcr: true
+      });
+
+      for (const pc of pageChunks) {
+        chunks.push({
+          ...pc,
+          chunk_index: chunkIndex++,
+          is_ocr: true
+        });
+      }
+    }
+  }
+
+  // Fallback if no page headers or if regex parsing produced 0 chunks
+  if (chunks.length === 0) {
+    const rawChunks = createChunks(cleanText, {
+      defaultPage: 1,
+      defaultSection: 'Page 1 (OCR)',
+      isOcr: true
+    });
+    for (const rc of rawChunks) {
+      chunks.push({
+        ...rc,
+        chunk_index: chunkIndex++,
+        is_ocr: true
+      });
+    }
+  }
+
+  if (chunks.length === 0) {
+    return {
+      status: 'needs_ocr',
+      fullText: cleanText,
+      chunks: [],
+      error: 'OCR text could not be chunked into readable segments.'
+    };
+  }
+
+  return {
+    status: 'completed',
+    fullText: cleanText,
+    chunks,
+    is_ocr: true,
+    ocr_extracted_at: new Date().toISOString()
+  };
+}
+
+/**
+ * Perform Optical Character Recognition (OCR) on scanned / image-only PDF buffer.
+ * Uses Google GenAI SDK (multimodal PDF document understanding).
+ */
+export async function performPdfOcr(buffer, options = {}) {
+  // Check if simulated OCR text was passed (for deterministic tests)
+  if (options.mockOcrText !== undefined) {
+    const text = (options.mockOcrText || '').trim();
+    if (text === 'NO_READABLE_TEXT' || text.length < 25) {
+      return {
+        status: 'needs_ocr',
+        fullText: text,
+        chunks: [],
+        error: 'OCR extraction attempted, but no readable text could be deciphered from the document image (< 25 characters).'
+      };
+    }
+    return parseOcrTextToChunks(text);
+  }
+
+  // Check if failure simulation requested (for error state tests)
+  if (options.simulateOcrFailure) {
+    return {
+      status: 'needs_ocr',
+      fullText: '',
+      chunks: [],
+      error: `OCR extraction failed: ${options.simulateOcrFailure}. Please retry.`
+    };
+  }
+
+  // Verify Gemini configuration
+  if (!config.gemini?.apiKey || !config.gemini.apiKey.trim()) {
+    return {
+      status: 'needs_ocr',
+      fullText: '',
+      chunks: [],
+      error: 'Scanned or image-only PDF detected: insufficient selectable text (< 25 characters). Optical Character Recognition (OCR) required, but GEMINI_API_KEY is not configured.'
+    };
+  }
+
+  const candidateModels = [
+    config.gemini.model || 'gemini-3.1-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash'
+  ];
+
+  const uniqueModels = Array.from(new Set(candidateModels));
+  const ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+  let lastError = null;
+
+  for (const model of uniqueModels) {
+    const controller = new AbortController();
+    const timeoutMs = 60000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      console.log(`[HandoverIQ OCR] Attempting multimodal PDF OCR with ${model}...`);
+      const base64Data = buffer.toString('base64');
+
+      const response = await ai.models.generateContent({
+        model,
+        contents: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: 'application/pdf'
+            }
+          },
+          'You are a high-precision Optical Character Recognition (OCR) engine. Extract all visible text from this document verbatim. If multi-page, delimit each page with "--- PAGE <number> ---" (e.g. --- PAGE 1 ---). Preserve numbers, tables, lists, and headers. If the document is blank or contains no readable text, respond with "NO_READABLE_TEXT".'
+        ],
+        config: {
+          abortSignal: controller.signal,
+          temperature: 0.1
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      const rawText = (response.text || '').trim();
+      if (!rawText || rawText === 'NO_READABLE_TEXT' || rawText.length < 25) {
+        return {
+          status: 'needs_ocr',
+          fullText: rawText === 'NO_READABLE_TEXT' ? '' : rawText,
+          chunks: [],
+          error: 'OCR extraction attempted, but no readable text could be deciphered from the document image (< 25 characters).'
+        };
+      }
+
+      return parseOcrTextToChunks(rawText);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isAbort = err.name === 'AbortError' || err.message?.includes('aborted');
+      lastError = isAbort
+        ? new Error(`OCR extraction timed out after ${Math.round(timeoutMs / 1000)} seconds. Service busy.`)
+        : err;
+      console.warn(`[HandoverIQ OCR] Model ${model} failed: ${lastError.message}`);
+
+      // Stop immediately on authentication, permission, or invalid key errors without hiding behind fallback models
+      const errMsg = (err.message || '').toLowerCase();
+      const isAuthError =
+        err.status === 401 ||
+        err.status === 403 ||
+        errMsg.includes('api_key_invalid') ||
+        errMsg.includes('api key not valid') ||
+        errMsg.includes('permission_denied') ||
+        errMsg.includes('unauthenticated');
+
+      if (isAuthError) {
+        return {
+          status: 'needs_ocr',
+          fullText: '',
+          chunks: [],
+          error: `OCR extraction authentication error: API key is invalid or unauthorized (${err.message}).`
+        };
+      }
+    }
+  }
+
+  return {
+    status: 'needs_ocr',
+    fullText: '',
+    chunks: [],
+    error: `OCR extraction failed (${lastError?.message || 'Unknown error'}). Please retry or upload a text-native document.`
+  };
+}
+
+/**
+ * Extract text from PDF buffer
+ * Preserves page numbering and runs OCR when selectable text is insufficient (< 25 characters)
+ */
+async function extractPDF(buffer, options = {}) {
   try {
     const uint8Data = new Uint8Array(buffer);
     const parser = new PDFParse(uint8Data);
@@ -73,12 +272,8 @@ async function extractPDF(buffer) {
 
     // Check if extraction is empty or too short (scanned PDF detection)
     if (cleanText.length < 25) {
-      return {
-        status: 'needs_ocr',
-        fullText: cleanText,
-        chunks: [],
-        error: 'Scanned or image-only PDF detected: insufficient selectable text (< 25 characters). Optical Character Recognition (OCR) required.'
-      };
+      console.log('[HandoverIQ PDF Parser] Insufficient selectable text detected (< 25 chars). Invoking OCR engine...');
+      return await performPdfOcr(buffer, options);
     }
 
     const chunks = [];
@@ -91,29 +286,39 @@ async function extractPDF(buffer) {
 
         const pageSubChunks = createChunks(pageText, {
           defaultPage: p.num,
-          defaultSection: `Page ${p.num}`
+          defaultSection: `Page ${p.num}`,
+          isOcr: false
         });
 
         for (const sc of pageSubChunks) {
           chunks.push({
             ...sc,
-            chunk_index: chunkIndex++
+            chunk_index: chunkIndex++,
+            is_ocr: false
           });
         }
       }
     } else {
       const rawChunks = createChunks(cleanText, {
         defaultPage: result.total >= 1 ? 1 : null,
-        defaultSection: 'Page coordinate unavailable'
+        defaultSection: 'Page coordinate unavailable',
+        isOcr: false
       });
-      chunks.push(...rawChunks);
+      for (const rc of rawChunks) {
+        chunks.push({
+          ...rc,
+          chunk_index: chunkIndex++,
+          is_ocr: false
+        });
+      }
     }
 
     return {
       status: 'completed',
       fullText: cleanText,
       chunks,
-      totalPages: result.total || 1
+      totalPages: result.total || 1,
+      is_ocr: false
     };
   } catch (err) {
     return {
@@ -269,11 +474,11 @@ function extractCSV(buffer) {
 /**
  * Main Text Extraction Dispatcher
  */
-export async function processDocumentBuffer(buffer, mimeType, filename) {
+export async function processDocumentBuffer(buffer, mimeType, filename, options = {}) {
   const ext = filename.split('.').pop()?.toLowerCase();
 
   if (mimeType === 'application/pdf' || ext === 'pdf') {
-    return await extractPDF(buffer);
+    return await extractPDF(buffer, options);
   }
 
   if (

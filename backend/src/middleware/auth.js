@@ -29,6 +29,8 @@ export function authenticate(req, res, next) {
     // but NEVER elevate to HR without server-verified secret token
     isAuthenticatedUser = true;
     isHRUser = false;
+    // Mark this request as a demo fallback so downstream code can recognise it
+    req.isDemo = true;
   }
 
   // Explicitly ignore and reject client-supplied role headers

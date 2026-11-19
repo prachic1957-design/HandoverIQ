@@ -1138,7 +1138,8 @@ export const db = {
         chunk_index: c.chunk_index,
         extracted_content: c.extracted_content,
         page_number: c.page_number !== undefined ? c.page_number : null,
-        section_reference: c.section_reference || null
+        section_reference: c.section_reference || null,
+        is_ocr: Boolean(c.is_ocr)
       }));
 
       const { data, error } = await supabase
@@ -1157,6 +1158,7 @@ export const db = {
         extracted_content: c.extracted_content,
         page_number: c.page_number !== undefined ? c.page_number : null,
         section_reference: c.section_reference || null,
+        is_ocr: Boolean(c.is_ocr),
         created_at: new Date().toISOString()
       };
       mockDocumentChunks.push(chunkObj);
@@ -1251,6 +1253,7 @@ export const db = {
       model_name,
       analysis_summary,
       structured_result,
+      evidence_coverage: structured_result?.evidence_coverage || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -1330,6 +1333,7 @@ export const db = {
         description: f.description,
         status: f.status || null,
         confidence: f.confidence || 'medium',
+        grounding_status: f.grounding_status || (Array.isArray(f.evidence_references) && f.evidence_references.length > 0 ? 'grounded' : 'unsupported'),
         evidence_references: f.evidence_references || [],
         review_status: 'needs_review',
         reviewed_by: null,

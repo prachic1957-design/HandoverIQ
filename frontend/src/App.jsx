@@ -8,6 +8,7 @@ import ProjectsView from './components/ProjectsView';
 import KnowledgeUploadView from './components/KnowledgeUploadView';
 import KnowledgeReconstructionView from './components/KnowledgeReconstructionView';
 import HandoverReportsView from './components/HandoverReportsView';
+import ReplacementsView from './components/ReplacementsView';
 import ModulePlaceholder from './components/ModulePlaceholder';
 
 export default function App() {
@@ -55,8 +56,9 @@ export default function App() {
       case 'upload':
         return <KnowledgeUploadView />;
       case 'reports':
-      case 'replacements':
         return <HandoverReportsView />;
+      case 'replacements':
+        return <ReplacementsView />;
       case 'knowledge':
         return <KnowledgeReconstructionView />;
       default:

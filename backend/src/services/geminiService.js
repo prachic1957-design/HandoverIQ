@@ -136,8 +136,34 @@ You MUST respond with valid JSON ONLY matching this exact structure:
 }
 
 /**
+ * Universal Confidence & Grounding Resolver
+ * - Zero valid citations -> confidence = "low", grounding_status = "unsupported"
+ * - One or more valid citations -> grounding_status = "grounded", preserves existing valid AI confidence
+ * - Never automatically upgrades low confidence
+ */
+export function resolveFindingQuality(rawConfidence, validRefsCount, defaultWhenGrounded = 'medium') {
+  if (validRefsCount === 0) {
+    return {
+      confidence: 'low',
+      grounding_status: 'unsupported'
+    };
+  }
+
+  const clean = typeof rawConfidence === 'string' ? rawConfidence.trim().toLowerCase() : null;
+  const confidence = (clean === 'high' || clean === 'medium' || clean === 'low')
+    ? clean
+    : defaultWhenGrounded;
+
+  return {
+    confidence,
+    grounding_status: 'grounded'
+  };
+}
+
+/**
  * Validate that every cited chunk_id in the AI response actually existed in the supplied prompt.
  * Rejects hallucinated chunk IDs to guarantee 100% source integrity.
+ * Applies universal confidence rules and grounding status across ALL finding types.
  */
 export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   const sanitized = {
@@ -178,9 +204,11 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   if (Array.isArray(rawResult.employee_work_history)) {
     for (const item of rawResult.employee_work_history) {
       const validRefs = sanitizeReferences(item.evidence_references);
+      const quality = resolveFindingQuality(item.confidence, validRefs.length, 'high');
       sanitized.employee_work_history.push({
         ...item,
-        confidence: validRefs.length > 0 ? (item.confidence || 'high') : 'low',
+        confidence: quality.confidence,
+        grounding_status: quality.grounding_status,
         evidence_references: validRefs
       });
     }
@@ -190,9 +218,12 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   if (Array.isArray(rawResult.milestones)) {
     for (const item of rawResult.milestones) {
       const validRefs = sanitizeReferences(item.evidence_references);
+      const quality = resolveFindingQuality(item.confidence, validRefs.length, 'medium');
       sanitized.milestones.push({
         ...item,
         status: ['completed', 'in_progress', 'pending', 'uncertain'].includes(item.status) ? item.status : 'uncertain',
+        confidence: quality.confidence,
+        grounding_status: quality.grounding_status,
         evidence_references: validRefs
       });
     }
@@ -202,8 +233,11 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   if (Array.isArray(rawResult.pending_tasks)) {
     for (const item of rawResult.pending_tasks) {
       const validRefs = sanitizeReferences(item.evidence_references);
+      const quality = resolveFindingQuality(item.confidence, validRefs.length, 'medium');
       sanitized.pending_tasks.push({
         ...item,
+        confidence: quality.confidence,
+        grounding_status: quality.grounding_status,
         evidence_references: validRefs
       });
     }
@@ -213,9 +247,12 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   if (Array.isArray(rawResult.risks_and_blockers)) {
     for (const item of rawResult.risks_and_blockers) {
       const validRefs = sanitizeReferences(item.evidence_references);
+      const quality = resolveFindingQuality(item.confidence, validRefs.length, 'medium');
       sanitized.risks_and_blockers.push({
         ...item,
         severity: ['high', 'medium', 'low'].includes(item.severity) ? item.severity : 'medium',
+        confidence: quality.confidence,
+        grounding_status: quality.grounding_status,
         evidence_references: validRefs
       });
     }
@@ -225,8 +262,11 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
   if (Array.isArray(rawResult.knowledge_gaps)) {
     for (const item of rawResult.knowledge_gaps) {
       const validRefs = sanitizeReferences(item.evidence_references);
+      const quality = resolveFindingQuality(item.confidence, validRefs.length, 'low');
       sanitized.knowledge_gaps.push({
         ...item,
+        confidence: quality.confidence,
+        grounding_status: quality.grounding_status,
         evidence_references: validRefs
       });
     }
@@ -236,9 +276,101 @@ export function validateAndSanitizeFindings(rawResult, validChunkMap) {
 }
 
 /**
+ * Calculate reliable, quantitative evidence coverage metrics for a knowledge analysis.
+ * Deduplicates chunk IDs and document IDs.
+ * Counts only valid citations verified against the provided chunk evidence pool.
+ * Safely handles zero chunks and zero findings (avoids NaN/Infinity).
+ */
+export function calculateEvidenceCoverage({ allChunks = [], structuredResult = {}, totalDocumentsCount = null }) {
+  const validChunkMap = new Map();
+  const projectDocumentIds = new Set();
+
+  for (const c of allChunks) {
+    if (c && c.id) {
+      validChunkMap.set(c.id, c);
+      if (c.document_id) {
+        projectDocumentIds.add(c.document_id);
+      }
+    }
+  }
+
+  const total_chunks = allChunks.length;
+
+  const total_documents = (totalDocumentsCount !== null && totalDocumentsCount !== undefined && totalDocumentsCount >= 0)
+    ? totalDocumentsCount
+    : projectDocumentIds.size;
+
+  const findingCategories = [
+    structuredResult.employee_work_history,
+    structuredResult.milestones,
+    structuredResult.pending_tasks,
+    structuredResult.risks_and_blockers,
+    structuredResult.knowledge_gaps
+  ];
+
+  const allFindingItems = [];
+  for (const category of findingCategories) {
+    if (Array.isArray(category)) {
+      allFindingItems.push(...category);
+    }
+  }
+
+  const total_findings = allFindingItems.length;
+
+  const uniqueCitedChunkIds = new Set();
+  const uniqueCitedDocumentIds = new Set();
+  let grounded_findings = 0;
+
+  for (const finding of allFindingItems) {
+    const refs = Array.isArray(finding.evidence_references) ? finding.evidence_references : [];
+    // Verify each reference against the valid chunk pool (strictly ignore invalid/hallucinated chunk IDs)
+    const validRefs = refs.filter(r => r && r.chunk_id && validChunkMap.has(r.chunk_id));
+
+    if (validRefs.length > 0) {
+      grounded_findings++;
+      for (const ref of validRefs) {
+        uniqueCitedChunkIds.add(ref.chunk_id);
+        if (ref.document_id) {
+          uniqueCitedDocumentIds.add(ref.document_id);
+        } else {
+          const chunkObj = validChunkMap.get(ref.chunk_id);
+          if (chunkObj && chunkObj.document_id) {
+            uniqueCitedDocumentIds.add(chunkObj.document_id);
+          }
+        }
+      }
+    }
+  }
+
+  const cited_chunks = uniqueCitedChunkIds.size;
+  const coverage_percentage = total_chunks > 0
+    ? Math.round(((cited_chunks / total_chunks) * 100) * 100) / 100
+    : 0;
+
+  const finding_grounding_percentage = total_findings > 0
+    ? Math.round(((grounded_findings / total_findings) * 100) * 100) / 100
+    : 0;
+
+  const ungrounded_findings_count = total_findings - grounded_findings;
+  const documents_analyzed_count = uniqueCitedDocumentIds.size;
+
+  return {
+    total_chunks,
+    cited_chunks,
+    coverage_percentage,
+    total_findings,
+    grounded_findings,
+    finding_grounding_percentage,
+    ungrounded_findings_count,
+    total_documents,
+    documents_analyzed_count
+  };
+}
+
+/**
  * Execute AI Knowledge Reconstruction
  */
-export async function reconstructKnowledge({ employee, project, allChunks = [], mockResponse = null, model_name = null }) {
+export async function reconstructKnowledge({ employee, project, allChunks = [], mockResponse = null, model_name = null, totalDocumentsCount = null }) {
   if (allChunks.length === 0) {
     const err = new Error('No extracted knowledge chunks found for this project. Please upload project documents first.');
     err.code = 'NO_CHUNKS';
@@ -254,10 +386,13 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
   // Check if mock response was provided (for automated tests or offline sandbox)
   if (mockResponse) {
     const validated = validateAndSanitizeFindings(mockResponse, validChunkMap);
+    const evidenceCoverage = calculateEvidenceCoverage({ allChunks, structuredResult: validated, totalDocumentsCount });
+    validated.evidence_coverage = evidenceCoverage;
     return {
       model_name: 'gemini-mock-test',
       analysis_summary: validated.summary,
       structured_result: validated,
+      evidence_coverage: evidenceCoverage,
       total_chunks_analyzed: allChunks.length
     };
   }
@@ -271,7 +406,7 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
     const secondChunk = allChunks.length > 1 ? allChunks[1] : allChunks[0];
 
     const syntheticDemoPayload = {
-      summary: `[DEMO MODE - Simulated Gemini 3.8 Flash] Knowledge reconstruction for ${employee.full_name} on project "${project.name}". Citations validated against ingested document chunks.`,
+      summary: `[DEMO MODE] Knowledge reconstruction for ${employee.full_name} on project "${project.name}". Citations validated against ingested document chunks.`,
       employee_work_history: [
         {
           work_item: `${project.name} Architectural Baseline & Workstream`,
@@ -366,10 +501,13 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
     };
 
     const validated = validateAndSanitizeFindings(syntheticDemoPayload, validChunkMap);
+    const evidenceCoverage = calculateEvidenceCoverage({ allChunks, structuredResult: validated, totalDocumentsCount });
+    validated.evidence_coverage = evidenceCoverage;
     return {
       model_name: model_name || 'gemini-3.8-flash-demo-fallback',
       analysis_summary: validated.summary,
       structured_result: validated,
+      evidence_coverage: evidenceCoverage,
       total_chunks_analyzed: allChunks.length,
       demo_mode: true
     };
@@ -391,7 +529,7 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
   const candidateModels = [modelName];
   if (modelName === 'gemini-3.8-flash') {
     // If primary model experiences transient capacity spikes (503), failover to available stable models
-    candidateModels.push('gemini-3.5-flash', 'gemini-3.1-flash-lite');
+    candidateModels.push('gemini-3.1-flash-lite', 'gemini-3.5-flash');
   }
 
   const ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
@@ -433,11 +571,14 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
 
         // Validate and sanitize against hallucinated citations
         const validated = validateAndSanitizeFindings(rawParsed, validChunkMap);
+        const evidenceCoverage = calculateEvidenceCoverage({ allChunks, structuredResult: validated, totalDocumentsCount });
+        validated.evidence_coverage = evidenceCoverage;
 
         return {
           model_name: currentModel,
           analysis_summary: validated.summary,
           structured_result: validated,
+          evidence_coverage: evidenceCoverage,
           total_chunks_analyzed: allChunks.length
         };
       } catch (err) {
@@ -451,6 +592,20 @@ export async function reconstructKnowledge({ employee, project, allChunks = [], 
           : err;
 
         console.warn(`[HandoverIQ Gemini Engine] ${currentModel} attempt ${attempt} failed: ${lastError.message}`);
+
+        // Stop immediately on authentication or permission errors without trying fallback models
+        const errMsg = (err.message || '').toLowerCase();
+        const isAuthError =
+          err.status === 401 ||
+          err.status === 403 ||
+          errMsg.includes('api_key_invalid') ||
+          errMsg.includes('api key not valid') ||
+          errMsg.includes('permission_denied') ||
+          errMsg.includes('unauthenticated');
+
+        if (isAuthError) {
+          throw lastError;
+        }
 
         if (attempt < maxAttempts && (isAbort || is503 || is429)) {
           await new Promise(res => setTimeout(res, 1500));

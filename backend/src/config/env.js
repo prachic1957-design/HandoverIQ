@@ -1,5 +1,14 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 dotenv.config();
+
+// Ensure backend/.env is loaded even if process.cwd() is project root
+if (!process.env.GEMINI_API_KEY) {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  dotenv.config({ path: path.resolve(currentDir, '../../.env') });
+}
 
 export const config = {
   port: process.env.PORT || 5000,
